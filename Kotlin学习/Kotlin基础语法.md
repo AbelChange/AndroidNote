@@ -349,7 +349,7 @@ class R (b :IB = B):IA by A("str"), IB by b
 - 自带 setter,gettter,equal/hashCode,toString
 - equal 只比较主构造中的属性
 
-#### 15.destructing
+#### 16.destructing
 
 ```kotlin
 val rock = decoration.rock
@@ -361,7 +361,7 @@ val (rock, wood, diver) = decoration
 val (rock, _, diver) = decoration
 ```
 
-#### 16.enum
+#### 17.enum
 
 ```kotlin
 enum class Direction(val degrees: Int) {
@@ -369,7 +369,7 @@ enum class Direction(val degrees: Int) {
 }
 ```
 
-#### 17.sealed class
+#### 18.sealed class
 
 ```kotlin
 //抽象的，它不能直接实例化
@@ -386,17 +386,7 @@ fun matchSeal(seal: Seal): String {
 }
 ```
 
-#### 18.data
-
-```
-
-```
-
-
-
-
-
-#### 18.pair
+#### 19.pair
 
 ```kotlin
 //Create a pair
@@ -569,7 +559,5 @@ EditText().addTextChangedListener(object : TextWatcher {
 //crossinline 是局部加强这个优化，让内联函数里的函数类型的参数可以被当做对象使用。
 ```
 
-```
 
-```
 

@@ -276,12 +276,12 @@ consumer的onNext中依次会123，234，345，45，5，之后onComplete();
            **/
           EditText name,age,job;
           Button confirm;
-
+  
           name = (EditText) findViewById(R.id.name);
           age = (EditText) findViewById(R.id.age);
           job = (EditText) findViewById(R.id.job);
           confirm = (Button) findViewById(R.id.list);
-
+  
           /*
            * 1. 此处采用了RxBinding：compile 'com.jakewharton.rxbinding2:rxbinding:2.0.0'
            * 2. 传入EditText控件，点击任1个EditText撰写时，都会发送数据事件 = Function3（）的返回值（下面会详细说明）
@@ -290,7 +290,7 @@ consumer的onNext中依次会123，234，345，45，5，之后onComplete();
           Observable<CharSequence> nameObservable = RxTextView.textChanges(name).skip(1);
           Observable<CharSequence> ageObservable = RxTextView.textChanges(age).skip(1);
           Observable<CharSequence> jobObservable = RxTextView.textChanges(job).skip(1);
-
+  
           /*
            * 步骤3：通过combineLatest（）合并事件 & 联合判断
            **/
@@ -362,7 +362,7 @@ public interface Disposable {
 
 ```
 冷流，事件发送只能在订阅后（Observable,Flow等）
-热流，事件发送可以在任意时间（PublishSubject，LiveData）
+热流，事件发送在订阅前后均可（PublishSubject，LiveData）
 ```
 
 ### 10.被压

@@ -28,6 +28,6 @@ C:\Users\haoshuaihui\AppData\Local\Microsoft\Windows\INetCache\frida\gadget-andr
 
 查看连接状态 : frida-ps -U 
 
-反编前台 :  frida-dexdump -FU -d -o .     
+反编前台 app:  frida-dexdump -FU -d -o .     
 
 反编目标apk：frida-dexdump -U -f  com.xxx  -d 

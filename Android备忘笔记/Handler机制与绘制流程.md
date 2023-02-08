@@ -62,72 +62,74 @@ public class ActivityThread {
 ```java
 
 class ViewRootImpl{
-   // setView()-->requestLayout()-->scheduleTraversals()
-        void scheduleTraversals() {
-                if (!mTraversalScheduled) {
-                    mTraversalScheduled = true;
-                    //1.发送同步屏障Msg,该Msg没有Target
-                    mTraversalBarrier = mHandler.getLooper().getQueue().postSyncBarrier();
-                    //2.将TraversalRunnable存放到Choreographer的“待执行队列中”
-                    //Choreographer收到Vsync信号时将发送异步消息（绘制任务）到主线程执行
-                    mChoreographer.postCallback(
-                            Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
-                    if (!mUnbufferedInputDispatch) {
-                        scheduleConsumeBatchedInput();
-                    }
-                    notifyRendererOfFramePending();
-                    pokeDrawLockIfNeeded();
-                }
-            }
-
-            final class TraversalRunnable implements Runnable {
-                @Override
-                public void run() {
-                    doTraversal();
-                }
-            }
-
-         void doTraversal() {
-                if (mTraversalScheduled) {
-                    mTraversalScheduled = false;
-                    //移除同步屏障并执行三大流程
-                    mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);
-                    performTraversals();
-                }
-          }
-
-         private void performTraversals() {
-                 if (mFirst) {
-					//重点:之后view.Post的Runnable才会执行,才能拿到view尺寸
-					//同理，当View的mAttachInfo ！=null时也说明肯定完成过UI绘制
-					dispatchAttachedToWindow()
-                 }				
-
-                //1. View树的测量-可以不测量直接走布局和绘制
-                if (mFirst || windowShouldResize || insetsChanged || viewVisibilityChanged || ...) {
-                    performMeasure(childWidthMeasureSpec, childHeightMeasureSpec);
-                    layoutRequested = true;  //需要进行布局
-                }
-                //2. View树的布局-可以不布局直接走绘制
-                final boolean didLayout = layoutRequested && (!mStopped || mReportNextDraw);
-                if (didLayout) {
-                    performLayout(lp, mWidth, mHeight);
-                }
-                //3. View树的绘制-可以不进行绘制
-                boolean cancelDraw = mAttachInfo.mTreeObserver.dispatchOnPreDraw() || !isViewVisible;
-                if (!cancelDraw && !newSurface) {
-                    performDraw();
-                }
+   // setView()
+    //-->requestLayout()
+    //-->scheduleTraversals()  不是立即执行，只是将任务丢给 Choreographer 
+    final class TraversalRunnable implements Runnable {
+        @Override
+        public void run() {
+            performTraversals();
         }
+    }
+
+    private void performTraversals() {
+        //伪代码
+		  View.dispatchAttachedToWindow(){
+             	mAttachInfo = info;
+				//执行延迟的任务队列	
+              	mRunQueue.executeActions(info.mHandler);
+          }
+    }
 }
+
+//收到系统vsync信号，才会开始实际绘制任务
+
+public final class Choreographer {
+    
+	   private final class FrameHandler extends Handler {
+        public FrameHandler(Looper looper) {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case MSG_DO_FRAME:
+                    doFrame();//-->doCallbacks(Choreographer.CALLBACK_TRAVERSAL);
+                    break;
+            }
+        }
+    }
+	
+     private final class FrameDisplayEventReceiver extends DisplayEventReceiver
+            implements Runnable {
+         
+         public void onVsync(){
+             //mFrameHandler发送一条 异步消息 MSG_DO_FRAME = 0
+         }
+     }
+    
+    
+}
+
+
 
 ```
 
 ### Handler机制
 
-- Handler构造需要Looper（子线程创建Handler异常）
-- Looper.prepare()将Looper绑定到当前线程（ThreadLocal）
-- Looper持有MessageQueue,将消息不断的取出，发送到Message的target(Handler)
+```java
+class ActivityThread{
+    public static void main(String[] args) {
+		//looper创建：new之后通过threadLocal绑定当前线程绑定当前线程
+		Looper.prepareMainLooper(); 
+		new Handler(); //此处判断是否已经创建looper,如果未创建则抛异常
+        Looper.loop();//Looper持有MessageQueue,将消息不断的取出，发送到Message的target(Handler)
+    }
+} 
+```
+
+- 
 
 ```java
 public final class Looper {
@@ -256,7 +258,6 @@ final class GcIdler implements MessageQueue.IdleHandler {
         }
 }
 ```
-
 
 
 
