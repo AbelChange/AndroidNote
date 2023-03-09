@@ -210,6 +210,13 @@ public final class MessageQueue {
 }
 ```
 
+
+
+### handler泄露引用链条
+
+- 主线程 —>（ThreadLocal中的Looper）MessageQueue —> Message —> Handler —> Activity
+- 注意区分匿名子线程 对外部类的引用 导致的泄露
+
 ### IdleHandler-LeakCanary 
 
 ```java
