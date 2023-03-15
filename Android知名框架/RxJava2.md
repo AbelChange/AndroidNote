@@ -361,8 +361,8 @@ public interface Disposable {
 ### 9.冷流-热流
 
 ```
-冷流，事件发送只能在订阅后（Observable,Flow等）
-热流，事件发送在订阅前后均可（PublishSubject，LiveData）
+冷流，只能收到订阅后的事件通知（Observable,Flow等）
+热流，订阅前后的事件都能收到（PublishSubject，LiveData）
 ```
 
 ### 10.被压

@@ -73,12 +73,19 @@ public final class RealInterceptorChain implements Interceptor.Chain {
    ```java
 
 public final class Dispatcher {
-  void enqueue(AsyncCall call) {
-    synchronized (this) {
-      readyAsyncCalls.add(call);
+ internal fun enqueue(call: AsyncCall) {
+    synchronized(this) {
+	 //加入readyQueue
+      readyAsyncCalls.add(call)
+
       // Mutate the AsyncCall so that it shares the AtomicInteger of an existing running call to
       // the same host.
-    promoteAndExecute();
+      if (!call.call.forWebSocket) {
+        val existingCall = findExistingCallWithHost(call.host)
+        if (existingCall != null) call.reuseCallsPerHostFrom(existingCall)
+      }
+    }
+    promoteAndExecute()
   }
 
   private boolean promoteAndExecute() {
