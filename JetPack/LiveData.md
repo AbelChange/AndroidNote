@@ -1,7 +1,70 @@
 LiveData
+
+对observer进行了wrapper,
+
+感知记录当前Livecylcle的状态，在dispatchingValue时，根据状态和版本号判断是否通知
+
+- 观察者模式
+- 生命周期感知
+
+```java
+ public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer) {
+		//同一个 observer 不能 bind不同的 lifecyle 
+        LifecycleBoundObserver wrapper = new LifecycleBoundObserver(owner, observer);
+        ObserverWrapper existing = mObservers.putIfAbsent(observer, wrapper);
+        if (existing != null && !existing.isAttachedTo(owner)) {
+            throw new IllegalArgumentException("Cannot add the same observer"
+                    + " with different lifecycles");
+        }
+        if (existing != null) {
+            return;
+        }
+		
+        owner.getLifecycle().addObserver(wrapper);
+    }
+
+
+ //绑定当前lifecyle，感知其生命周期变化，并记录
+  class LifecycleBoundObserver implements LifecycleObserver {
+	
+      final Observer<? super T> mObserver;
+      boolean mActive;
+      int mLastVersion = START_VERSION;
+
+        LifecycleBoundObserver(@NonNull LifecycleOwner owner, Observer<? super T> observer)
+
+        @Override
+        boolean shouldBeActive() {
+            return mOwner.getLifecycle().getCurrentState().isAtLeast(STARTED);
+        }
+
+        @Override
+        public void onStateChanged(@NonNull LifecycleOwner source,
+                @NonNull Lifecycle.Event event) {
+				
+      				
+        }
+
+    }
+
+ 
+//调用栈
+setValue
+    ->dispatchValue 遍历所有observer通知
+    ->considerNotify() 版本号 + 当前observer状态
+    ->onChanged
+    
+
+```
+
 使用：
 
-1. ViewModel类
+ViewModel类
+
+- 不持有view ，  避免了内存泄露
+- 配置更改时，不需要重新获取数据
+
+
 
 ```java
 
@@ -65,23 +128,7 @@ An observer added via `observeForever(Observer)` is considered as always active 
 6.
 
 ````java
- public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer) {
-        assertMainThread("observe");
-        if (owner.getLifecycle().getCurrentState() == DESTROYED) {
-            return;
-        }
-		//同一个 observer 不能 bind不同的 lifecyle 
-        LifecycleBoundObserver wrapper = new LifecycleBoundObserver(owner, observer);
-        ObserverWrapper existing = mObservers.putIfAbsent(observer, wrapper);
-        if (existing != null && !existing.isAttachedTo(owner)) {
-            throw new IllegalArgumentException("Cannot add the same observer"
-                    + " with different lifecycles");
-        }
-        if (existing != null) {
-            return;
-        }
-        owner.getLifecycle().addObserver(wrapper);
-    }
+
 ````
 
 7.SingleLiveEvent,（onkyFromUser）只有setValue才会调用该方法，生命周期引起的变化不会激活该方法
