@@ -555,7 +555,7 @@ EditText().addTextChangedListener(object : TextWatcher {
 ```
 //inline 内联优化 减少函数类型的对象的创建
 
-//noinline参数 是局部参数关掉这个优化，函数类型继续作为对象使用 
+//noinline参数 是局部指向性的关掉某个参数的优化，函数类型继续作为对象使用， 
 
 ```
 

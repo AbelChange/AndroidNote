@@ -4,6 +4,11 @@ LiveData
 
 感知记录当前Livecylcle的状态，在dispatchingValue时，根据状态和版本号判断是否通知
 
+https://www.cnblogs.com/baiqiantao/p/10621008.html
+
+
+
+
 - 观察者模式
 - 生命周期感知
 
@@ -64,8 +69,6 @@ ViewModel类
 - 不持有view ，  避免了内存泄露
 - 配置更改时，不需要重新获取数据
 
-
-
 ```java
 
 public LiveData<String> getMediatorLiveData(String url) {
@@ -125,76 +128,44 @@ An observer added via `observeForever(Observer)` is considered as always active 
 
 5.MediatorLiveData 用于对多个LiveData进行合并
 
-6.
+7.SingleLiveEvent,（onlyFromUser）只有setValue才会调用该方法，生命周期引起的变化不会激活该方法
 
-````java
 
-````
 
-7.SingleLiveEvent,（onkyFromUser）只有setValue才会调用该方法，生命周期引起的变化不会激活该方法
+### LiveData为啥连续postValue两次，第一次值会丢失?
+
+- 只有pendingData值为初始值才会 postRunnable,处理结束会设置为初始值
+- 如果post的 r 还未被主线程处理，即pendingData还有值时
+- 再次post，只是修改pendingData，不会发送新的 r ，避免频繁切换线程带来开销
 
 ```java
-import android.util.Log;
-
-import androidx.annotation.MainThread;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.lifecycle.LifecycleOwner;
-import androidx.lifecycle.MutableLiveData;
-import androidx.lifecycle.Observer;
-
-import java.util.concurrent.atomic.AtomicBoolean;
-
-/**
- * A lifecycle-aware observable that sends only new updates after subscription, used for events like
- * navigation and Snackbar messages.
- * <p>
- * This avoids a common problem with events: on configuration change (like rotation) an update
- * can be emitted if the observer is active. This LiveData only calls the observable if there's an
- * explicit call to setValue() or call().
- * <p>
- * Note that only one observer is going to be notified of changes.
- */
-public class SingleLiveEvent<T> extends MutableLiveData<T> {
-
-    private static final String TAG = "SingleLiveEvent";
-
-    private final AtomicBoolean mPending = new AtomicBoolean(false);
-
-    @Override
-    @MainThread
-    public void observe(@NonNull LifecycleOwner owner, @NonNull Observer<? super T> observer) {
-
-        if (hasActiveObservers()) {
-            Log.w(TAG, "Multiple observers registered but only one will be notified of changes.");
+    protected void postValue(T value) {
+        boolean postTask;
+        synchronized (mDataLock) {
+            postTask = mPendingData == NOT_SET;
+            mPendingData = value;
         }
-
-        // Observe the internal MutableLiveData
-        super.observe(owner, new Observer<T>() {
-            @Override
-            public void onChanged(@Nullable T t) {
-                if (mPending.compareAndSet(true, false)) {
-                    observer.onChanged(t);
-                }
-            }
-        });
+        if (!postTask) {
+            return;
+        }
+        ArchTaskExecutor.getInstance().postToMainThread(mPostValueRunnable);
     }
-
-    @Override
-    @MainThread
-    public void setValue(@Nullable T t) {
-        mPending.set(true);
-        super.setValue(t);
-    }
-
-    /**
-     * Used for cases where T is Void, to make calls cleaner.
-     */
-    @MainThread
-    public void call() {
-        setValue(null);
-    }
-}
 
 ```
 
+
+
+```java
+    private final Runnable mPostValueRunnable = new Runnable() {
+        @SuppressWarnings("unchecked")
+        @Override
+        public void run() {
+            Object newValue;
+            synchronized (mDataLock) {
+                newValue = mPendingData;
+                mPendingData = NOT_SET;
+            }
+            setValue((T) newValue);
+        }
+    };
+```

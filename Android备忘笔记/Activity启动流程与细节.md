@@ -11,10 +11,11 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
 ### 简单介绍
 
 1.点击图标，Launcher向AMS请求创建根Activity
-2.AMS反馈收到启动请求,并告知Launcher进入pause状态
-3.Launcher进入Paused状态并告知AMS
-4.AMS通知Zygote,Zygote fork目标进程（如果不存在）,ActivityThread-Main函数
-5.AMS校验之后通知AppThread创建启动根Activity
+2.ApplicationThread.H收到Pause消息,执行pause流程
+3.startSpecificActivity,判断进程是否存在
+4.如果无进程，AMS通知ZygoteProcess  fork出 目标进程 进入 Main函数  
+5.main函数 new ActivityThread().attach() { AMS 关联 ApplicationThread(binder) }
+5.AMS通过ApplicationThread发送launch消息到ActivityThread.H
 
 ### 源码细节
 
