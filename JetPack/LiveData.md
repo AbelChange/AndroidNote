@@ -1,7 +1,5 @@
 LiveData
 
-对observer进行了wrapper,
-
 感知记录当前Livecylcle的状态，在dispatchingValue时，根据状态和版本号判断是否通知
 
 https://www.cnblogs.com/baiqiantao/p/10621008.html
@@ -137,6 +135,7 @@ An observer added via `observeForever(Observer)` is considered as always active 
 - 只有pendingData值为初始值才会 postRunnable,处理结束会设置为初始值
 - 如果post的 r 还未被主线程处理，即pendingData还有值时
 - 再次post，只是修改pendingData，不会发送新的 r ，避免频繁切换线程带来开销
+- 第二次只是赋值，没有重新postMainThread()
 
 ```java
     protected void postValue(T value) {

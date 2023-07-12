@@ -21,15 +21,24 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
 
 #### 1.Launcher(ApplcationThread)进程与SystemServer(AMS)
 
-- Launcher.startActivity
-- AMS 通知laucher ActivityThread    pause A
-- ActivityManagerNative.getDefault().activityPaused > ActivityThread通知AMS A Pause完毕
+- Launcher -> AMS     startActivity
+
+- AMS -> ActivityThread(Launcher)   pause消息
+  ```java
+  private void handlePauseActivity (){
+  		...pause操作
+  	//通知AMSpause完了
+     ActivityManagerNative.getDefault().activityPaused(token);
+   }                 
+  ```
 
 #### 2.SystemServer与APP
 
 ActivityTaskSupervisor.startSpecificActivity
  └1.启动新进程：ActivityManagerService.startProcessLocked 
  └2.当前进程：ActivityTaskSupervisor.realStartActivityLocked
+
+AMS -> ATS -> ActivitySupervisor->ActivityThread 
 
 ```java
 ActivityTaskSupervisor.java
@@ -44,7 +53,7 @@ void startSpecificActivity(ActivityRecord r, boolean andResume, boolean checkCon
 	return;		
   }
 
-  //进程不存在 ->否则通过AMS向Zygote进程请求创建新的进程,进入ActivityThread Main方法准备消息队列与ApplicationThread
+  //通过AMS向Zygote进程请求创建新的进程,进入ActivityThread Main方法
   mService.startProcessAsync(r, knownToBeDead, isTop, isTop ? "top-activity" : "activity");
 }
 

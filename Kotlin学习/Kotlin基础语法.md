@@ -191,7 +191,7 @@ val text = """
 println(text)
 ```
 
-#### 7.参数
+#### 8.参数
 
 ```kotlin
 //可选参数的值可以是函数
@@ -203,7 +203,7 @@ fun sayHi( age: Int,name: String = "world",whom: String = "anyOne") {
 
 ```
 
-#### 10.lambda是对象，匿名函数不是函数
+#### 9.lambda是对象，匿名函数不是函数
 
 - 在 Kotlin 里，有一类 Java 中不存在的类型，叫做「函数类型」，这一类类型的对象在可以当函数来用的同时，还能作为函数的参数、函数的返回值以及赋值给变量；
 - 创建一个函数类型的对象有三种方式：双冒号加函数名、匿名函数和 Lambda；
@@ -233,7 +233,7 @@ println(dirtyLevel)
 
 - [Last parameter call syntax](https://kotlinlang.org/docs/reference/lambdas.html#passing-a-lambda-to-the-last-parameter)
 
-### 10.lambda作为参数
+#### 10.lambda作为参数
 
 - lambda作为最后一个参数可以移出（），拖尾lambda
 
@@ -511,8 +511,6 @@ fun main(args: Array<String>) {
 泛型  out in
 producer extends,consumer super!
 
-
-
 #### 28.伴生对象
 
 ```kotlin
@@ -541,21 +539,14 @@ EditText().addTextChangedListener(object : TextWatcher {
 })
 ```
 
-#### 31.LiveData依赖于另一个LiveData 可以使用Transformations.map
-
-```kotlin
-// This LiveData depends on another so we can use a transformation.
-   val empty: LiveData<Boolean> = Transformations.map(anotherLiveData) {
-        it.isEmpty()
-    }
-```
-
-#### 32.inline内联函数
+#### 30.inline内联函数
 
 ```
 //inline 内联优化 减少函数类型的对象的创建
 
-//noinline参数 是局部指向性的关掉某个参数的优化，函数类型继续作为对象使用， 
+//noinline参数 是局部指向性的关掉某个参数的优内联化，函数类型继续作为对象使用， 
+
+//crossinline 避免函数被lambda提前返回
 
 ```
 
