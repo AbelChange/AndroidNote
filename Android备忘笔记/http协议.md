@@ -26,6 +26,8 @@ DNS负责域名解析，即提供 IP地址与域名之间的转换
 
 原文：https://blog.csdn.net/shankezh/article/details/70763579 
 
+![alt](https://img-blog.csdnimg.cn/img_convert/b3acbeca929745dab30bb082e086b327.png)
+
 作用：应用层报文分割，打上标记序号与端口号转发给网络层
 
 tcp协议：三次握手保证可靠性(发送与接受的可靠性) 
