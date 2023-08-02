@@ -60,7 +60,7 @@ void startSpecificActivity(ActivityRecord r, boolean andResume, boolean checkCon
 3.ActivitySupervisor  通过ApplicationThread 与 App 通信
  final boolean realStartActivityLocked(...){
        ......
-       app.thread.scheduleLaunchActivity(...); //33找不到了
+       app.thread.scheduleLaunchActivity(...); //handler发送Launch消息
        ......
  }
 ```
@@ -70,8 +70,7 @@ void startSpecificActivity(ActivityRecord r, boolean andResume, boolean checkCon
 #### 3.ActivityThread
 
 ActivityThread.handleLaunchActivity->
-    └Activity.onCreate
-    └Activity.onRestoreInstanceState
+    └Activity.onCreate   : 关联contentView与decorView
 	└handleResumeActivity
        └Activity.onStart->
        └Activity.onResume->
@@ -120,10 +119,35 @@ class ViewRootImpl{
    // setView()
     //-->requestLayout()
     //-->scheduleTraversals()  不是立即执行，只是将任务丢给 Choreographer 
+
+      void scheduleTraversals(){
+          //发送同步屏障
+         mHandler.getLooper().getQueue().postSyncBarrier();
+   		//Posts a callback to run on the next frame（当vsync信号来之后执行）
+      mChoreographer.postCallback(
+                          Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
+      }
+
+
+  	void  doTraversal(){
+				//移除同步屏障
+ 			 mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);   
+				//绘制
+    	 performTraversals（）
+    } 
+
+	void performTraversals(){
+        final View host = mView;
+			  host.dispatchAttachedToWindow()  //使用handler发送消息
+        performMeasure()
+				performLayout()
+				performDraw()    
+    }  
+    
     final class TraversalRunnable implements Runnable {
         @Override
         public void run() {
-            performTraversals();
+            doTravesal()
         }
     }
 
@@ -162,11 +186,10 @@ public final class Choreographer {
          public void onVsync(){
              //mFrameHandler发送一条 异步消息 MSG_DO_FRAME = 0
          }
-     }
-    
-    
+     } 
 }
 ```
+
 
 
 

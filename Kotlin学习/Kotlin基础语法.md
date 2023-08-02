@@ -542,12 +542,19 @@ EditText().addTextChangedListener(object : TextWatcher {
 #### 30.inline内联函数
 
 ```
-//inline 内联优化 减少函数类型的对象的创建
+背景：lambad作为参数，调用者在调用时候会产生匿名对象
 
-//noinline参数 是局部指向性的关掉某个参数的优内联化，函数类型继续作为对象使用， 
+//inline 内联优化 
+避免产生匿名对象，将函数铺平
+
+//noinline参数 是局部指向性的屏蔽该优化
+让lambada参数可以作为对象使用
 
 //crossinline 避免函数被lambda提前返回
-
+高阶函数无法返回main
+inline的高阶函数，可以返回main,也可以返回lambada
+使用crossinline可限制调用方只能返回到lambada
+避免调用提前返回
 ```
 
 
