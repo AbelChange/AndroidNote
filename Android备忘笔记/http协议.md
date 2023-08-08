@@ -160,38 +160,40 @@ server 响应 header:Set-Cookie
 
 ##### 2.93resonse header
 
-
+Connection:KeepAlive/False
 
 Content-Type:multipart/form-data 
 
 Content-Range:bytes =1000-2000,5001-10000 
-
-部分请求
 
 ### 3HTTP状态码：
 
 ####  2XX OK
 
 204 no content   告诉客户端可以使用当前，不需要更新
-206 partial content       设置content-range
+206 partial content      设置content-range
 
-3xx重定向
-301绝对重定向
-302临时重定向
-304 和重定向没关系，告诉客户端可以使用缓存
+#### 3XX: relocation/redirect
 
-4xx bad request 客户端错误
-400：语法错误
-401:unauthorized 
+300  Multiple Choices
+301 Moved Permanently 永久移动
+302 暂时移动
+304 Not Modified,告诉客户端可以使用缓存
+305 Use Proxy
 
-403: forbidden 拒绝
-404: not found 找不到资源
+#### 4xx client error
 
-5xx:服务器错误
+400：Bad Request 
+401：Unauthorized 
 
-500： internal server error
+403: Forbidden 拒绝
+404: Not Found 找不到资源
 
-503: service unavailable，超载
+#### 5xx: server error
+
+500: Internal Server Error
+502: Bad Gateway.
+503: Service Unavailable，超载
 
 #### Https
 

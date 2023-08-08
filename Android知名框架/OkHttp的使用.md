@@ -1,5 +1,11 @@
 ## OkHttp源码解读
 
+![拦截器链](./img/拦截器链.webp)
+
+![okHttp拦截器](./img/okHttp拦截器.webp)
+
+
+
 ### 1.基本使用
 
 ```java
@@ -9,61 +15,57 @@ client.newCall(request).enqueue(Callback responseCallback);
 
 ### 2.源码分析
 
-#### 2.1实际Call的调用
+#### 2.1拦截器
 
-```java
-final class RealCall implements Call {
-		//同步执行
-    public Response execute() throws IOException {
-           client.dispatcher().executed(this);	
-           Response result = getResponseWithInterceptorChain();
-    }	
-
-    //异步：enqueue，call加入**runningAsyncCalls**,并交给线程池执行getResponseWithInterceptorChain
-    synchronized void enqueue(Callback responseCallback) {
-        //AsyncCall是个runnable
-        client.dispatcher().enqueue(new AsyncCall(responseCallback));
+```kotlin
+ @Throws(IOException::class)
+  internal fun getResponseWithInterceptorChain(): Response {
+    // Build a full stack of interceptors.
+    val interceptors = mutableListOf<Interceptor>()
+    interceptors += client.interceptors
+		//对某些错误进行重试，这些错误包括401、408 、部分3XX的错误
+		//可以通过retryOnConnectFailure进行配置是否生效，默认有效
+    interceptors += RetryAndFollowUpInterceptor(client) 
+	  //处理header
+    interceptors += BridgeInterceptor(client.cookieJar)
+		//缓存处理
+    interceptors += CacheInterceptor(client.cache)
+		//判断是复用连接还是新建连接
+    interceptors += ConnectInterceptor
+    if (!forWebSocket) {
+      interceptors += client.networkInterceptors
     }
+		//发起请求
+    interceptors += CallServerInterceptor(forWebSocket)
 
+    val chain = RealInterceptorChain(
+        call = this,
+        interceptors = interceptors,
+        index = 0,
+        exchange = null,
+        request = originalRequest,
+        connectTimeoutMillis = client.connectTimeoutMillis,
+        readTimeoutMillis = client.readTimeoutMillis,
+        writeTimeoutMillis = client.writeTimeoutMillis
+    )
 
-    final class AsyncCall extends NamedRunnable {
-        private volatile AtomicInteger callsPerHost = new AtomicInteger(0);
-        void executeOn(ExecutorService executorService) {
-          executorService.execute(this);
-        }
-        //实际的run
-        protected void execute() {
-            //响应与回调
-            Response response = getResponseWithInterceptorChain();
-            responseCallback.onResponse(RealCall.this, response);
-        }
+    var calledNoMoreExchanges = false
+    try {
+      val response = chain.proceed(originalRequest)
+      if (isCanceled()) {
+        response.closeQuietly()
+        throw IOException("Canceled")
+      }
+      return response
+    } catch (e: IOException) {
+      calledNoMoreExchanges = true
+      throw noMoreExchanges(e) as Throwable
+    } finally {
+      if (!calledNoMoreExchanges) {
+        noMoreExchanges(null)
+      }
     }
-	Response getResponseWithInterceptorChain() throws IOException {
-		//构造拦截器
-        List<Interceptor> interceptors = new ArrayList<>();
-        interceptors.addAll(client.interceptors());
-		//缓存
-    	interceptors.add(new CacheInterceptor(client.internalCache()));
-        interceptors.add(new CallServerInterceptor(forWebSocket));
-		//构造责任链
-     	Interceptor.Chain chain =  new RealInterceptorChain(interceptors);
-		//从初始位置逐个取出拦截器进行拦截，拦截器拦截过程中可以终止
-		chain.proceed()
-	}
-}	
-
-public final class RealInterceptorChain implements Interceptor.Chain {
-  public Response proceed(Request request, Transmitter transmitter, @Nullable Exchange exchange){
-       // Call the next interceptor in the chain.
-    RealInterceptorChain next = new RealInterceptorChain(interceptors, transmitter, exchange,
-        index + 1, request, call, connectTimeout, readTimeout, writeTimeout);
-    Interceptor interceptor = interceptors.get(index);
-	//怼事件进行消费，将拦截链交给下一个拦截器
-    Response response = interceptor.intercept(next);
-	return response;
   }
-}
-
 
 
 ```

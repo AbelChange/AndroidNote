@@ -60,6 +60,19 @@ setValue
 
 ```
 
+### 地理位置
+
+```kotlin
+1.业务类LogicrProxy实现DefaultLifecycleObser接口
+//在LifecycleOwener里使用lifecycle
+2.getLifecycle.addOberver(LogicProxy(this))
+
+```
+
+
+
+
+
 使用：
 
 ViewModel类
