@@ -1,5 +1,16 @@
 Glide
 
+- LruCache
+
+​		基于LinkedHashMap实现,遍历顺序默认为插入顺序
+​		构造为访问顺序(accessOrder)
+
+```java
+ private final Map<T, Entry<Y>> cache = new LinkedHashMap<>(100, 0.75f, true);
+```
+
+这样使用get之后会将数据放在尾巴，在trim2size之后，会移除head元素
+
 https://juejin.cn/user/4371313961737181 大佬
 
 

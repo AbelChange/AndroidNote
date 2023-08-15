@@ -38,11 +38,11 @@ ActivityTaskSupervisor.startSpecificActivity
  └1.启动新进程：ActivityManagerService.startProcessLocked 
  └2.当前进程：ActivityTaskSupervisor.realStartActivityLocked
 
-AMS -> ATS -> ActivitySupervisor->ActivityThread 
+AMS -> ATS -> ActivityStackSupervisor->ActivityThread 
 
 ```java
-ActivityTaskSupervisor.java
-void startSpecificActivity(ActivityRecord r, boolean andResume, boolean checkConfig) {
+ActivityStackSupervisor.java
+void startSpecificActivityLocked(ActivityRecord r, boolean andResume, boolean checkConfig) {
   // 获取要启动的Activity进程信息
   final WindowProcessController wpc =
     mService.getProcessController(r.processName, r.info.applicationInfo.uid);
@@ -50,14 +50,14 @@ void startSpecificActivity(ActivityRecord r, boolean andResume, boolean checkCon
   //进程存在 -> 启动一个同应用的Activity（普通Activity就在此执行）
   if (wpc != null && wpc.hasThread()) {
     realStartActivityLocked(r, wpc, andResume, checkConfig);
-	return;		
+		return;		
   }
 
   //通过AMS向Zygote进程请求创建新的进程,进入ActivityThread Main方法
   mService.startProcessAsync(r, knownToBeDead, isTop, isTop ? "top-activity" : "activity");
 }
 
-3.ActivitySupervisor  通过ApplicationThread 与 App 通信
+3.ActivityStackSupervisor  通过ApplicationThread 与 App 通信
  final boolean realStartActivityLocked(...){
        ......
        app.thread.scheduleLaunchActivity(...); //handler发送Launch消息
@@ -88,8 +88,11 @@ ActivityThread.handleLaunchActivity->
 
 
 private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
-    		//Instrumention - new Actvitiy 回调onCreate 关联decor与contentview
-    		//Instrumention - new Application
+    		//mInstrumentation - new Actvitiy 
+    		//mInstrumentation - new Application
+				//activity.attach(appContext) => 1.new phonewindow().setWindowManager() 2.关联parentWindow
+				//mInstrumentation.callActivityOnCreate 
+				//setContentView()=>Phonewindow.setContentView() =>installdecor关联contentView
 }
 
 
@@ -121,9 +124,10 @@ class ViewRootImpl{
     //-->scheduleTraversals()  不是立即执行，只是将任务丢给 Choreographer 
 
       void scheduleTraversals(){
-          //发送同步屏障
+          //发送同步屏障,屏蔽默认handler发送的同步消息
          mHandler.getLooper().getQueue().postSyncBarrier();
    		//Posts a callback to run on the next frame（当vsync信号来之后执行）
+			//该消息是异步的，绘制任务得以优先于异步消息执行
       mChoreographer.postCallback(
                           Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
       }

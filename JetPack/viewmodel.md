@@ -45,11 +45,7 @@ ViewModelProviders.of(this, ViewModelFactory).get(ViewModel.class)；
 
 ViewModel 有一个onCleared方法，那么他是在何时调用的呢?
 
-
-
-highlighter- code-theme-dark Java
-
-```
+```kotlin
 public abstract class ViewModel {
     /**
      * This method will be called when this ViewModel is no longer used and will be destroyed.
@@ -61,34 +57,40 @@ public abstract class ViewModel {
 }
 ```
 
-ViewModel 创建的时候提到过实例化了一个 `HolderFragment` 。并且实例化的时候通过上面 createHolderFragment 方法将其`fragmentManager.beginTransaction().add(holder, HOLDER_TAG).commitAllowingStateLoss();`，在 commit 之后，fragment 将会获得生命周期。
-
-我们看看其 onDestroy 方法：
-
 
 
 ```java
-@Override
-public void onDestroy() {
-    super.onDestroy();
-    mViewModelStore.clear();
-}
-```
+public class  ComponentActivity 
 
-在HolderFragment的onDestroy()方法中调用了ViewModelStore.clear()方法，在该方法中会调用ViewModel的onCleared()方法：
+getLifecycle().addObserver(new LifecycleEventObserver() {
+            @Override
+            public void onStateChanged(@NonNull LifecycleOwner source,
+                    @NonNull Lifecycle.Event event) {
+                if (event == Lifecycle.Event.ON_DESTROY) 
+										//配置变更引起的activity重建 不销毁viewModel 即handleRelaunchActivity会变更此boolean
+                    if (!isChangingConfigurations()) {
+                        getViewModelStore().clear();
+                    }
+                    mReportFullyDrawnExecutor.activityDestroyed();
+                }
+            }
+        });
 
 
-```java
-/**
- *  Clears internal storage and notifies ViewModels that they are no longer used.
- */
-public final void clear() {
-    for (ViewModel vm : mMap.values()) {
-        vm.onCleared(); //调用ViewMode的onCleared方法
+    /**
+     * @return If the activity is being torn down in order to be recreated with a new configuration,
+     * returns true; else returns false.
+     */
+    public boolean isChangingConfigurations() {
+        return mChangingConfigurations;
     }
-    mMap.clear();
-}
+
+
 ```
+
+
+
+//老版本viewmodel通过这样去判断是否销毁，新的api已经不是这样，但glide是
 
 ## Fragment 的 setRetainInstance 方法
 
@@ -106,18 +108,5 @@ Fragment具有属性retainInstance，默认值为false，当设备旋转时，fr
 虽然保留的fragment没有被销毁，但它已脱离消亡中的activity并处于保留状态。尽管此时的fragment仍然存在，但已经没有任何activity托管它。
 
 需要说明的是，只有调用了fragment的setRetainInstance(true)方法，并且因设备配置改变，托管Activity正在被销毁的条件下，fragment才会短暂的处于保留状态。如果activity是因操作系统需要回收内存而被销毁，则所有的fragment也会随之销毁。
-
-**那么问题来了，为什么横竖屏切换 ViewModel 不会回调 onCleared？**
-看 HolderFragment 的构造方法里有个`setRetainInstance(true);`
-
-
-
-highlighter- code-theme-dark Java
-
-```
-public HolderFragment() {
-    setRetainInstance(true);
-}
-```
 
 setRetainInstance(boolean) 是Fragment中的一个方法。将这个方法设置为true就可以使当前Fragment在Activity重建时存活下来。在setRetainInstance(boolean)为true的 Fragment 中放一个专门用于存储ViewModel的Map, 自然Map中所有的ViewModel都会幸免于Activity重建，让Activity, Fragment都绑定一个这样的Fragment, 将ViewModel存放到这个 Fragment 的 Map 中, ViewModel 组件就这样实现了。

@@ -1,10 +1,8 @@
-LiveData
+LifeCycle
 
 感知记录当前Livecylcle的状态，在dispatchingValue时，根据状态和版本号判断是否通知
 
 https://www.cnblogs.com/baiqiantao/p/10621008.html
-
-
 
 
 - 观察者模式
@@ -22,7 +20,7 @@ https://www.cnblogs.com/baiqiantao/p/10621008.html
         if (existing != null) {
             return;
         }
-		
+				//lifecycleRegistry
         owner.getLifecycle().addObserver(wrapper);
     }
 
@@ -60,12 +58,54 @@ setValue
 
 ```
 
-### 地理位置
+### 扩展lifecycle observer
 
 ```kotlin
-1.业务类LogicrProxy实现DefaultLifecycleObser接口
-//在LifecycleOwener里使用lifecycle
-2.getLifecycle.addOberver(LogicProxy(this))
+1.业务类Proxy实现DefaultLifecycleObserver接口
+
+2.实现LifecycleEventObserver或者DefaultLifecycleObserver(更简洁，只关注某个state即可)
+
+getLifecycle().addObserver(new LifecycleEventObserver() {
+                    public void onStateChanged(@NonNull LifecycleOwner source, @NonNull Lifecycle.Event event) {
+                      
+                    }
+
+```
+
+### 扩展Lifecycle
+
+```kotlin
+
+open class LifecycleService : Service(), LifecycleOwner { 
+			//实现lifecycleowner
+      override val lifecycle: Lifecycle
+        get() = LifecycleRegistry(lifecycleOwner:this)
+
+		//2.周期方法中lifecycleRegistry通知observer 对应event 
+  	//componentActivity是通过注入reportFramment代理实现的
+		//registry.handleLifecycleEvent()=>lifecycleEventObserver.onStateChanged()
+}
+
+public fun interface LifecycleEventObserver : LifecycleObserver {
+    public fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event)
+}
+
+open class LifecycleRegistry private constructor(
+    provider: LifecycleOwner
+) : Lifecycle(){
+ private val lifecycleOwner: WeakReference<LifecycleOwner>
+ init {
+        lifecycleOwner = WeakReference(provider)
+  }
+
+	
+ observer.dispatchEvent(lifecycleOwner, event)
+
+
+
+}
+
+
 
 ```
 
