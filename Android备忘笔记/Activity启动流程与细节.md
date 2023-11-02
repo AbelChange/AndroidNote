@@ -8,22 +8,34 @@
 git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_base.git --depth = 1
 ```
 
+
+
+
+
+
+![启动流程涉及进程间通信](./img/启动流程涉及进程间通信.webp)
+
+
+
+
+
 ### 简单介绍
 
 1.点击图标，Launcher向AMS请求创建根Activity
-2.ApplicationThread.H收到Pause消息,执行pause流程
-3.startSpecificActivity,判断进程是否存在
-4.如果无进程，AMS通知ZygoteProcess  fork出 目标进程 进入 Main函数  
-5.main函数 new ActivityThread().attach() { AMS 关联 ApplicationThread(binder) }
-5.AMS通过ApplicationThread发送launch消息到ActivityThread.H
+2.如果无进程，AMS通知Zygote  fork出 目标进程 进入 Main函数  
+3.main函数 将当前applicationThread关联到Ams
+4.AMS通过ApplicationThread发送launch消息到ActivityThread.H
 
 ### 源码细节
 
-#### 1.Launcher(ApplcationThread)进程与SystemServer(AMS)
+#### 1.Launcher进程与SystemServer
 
 - Launcher -> AMS     startActivity
 
-- AMS -> ActivityThread(Launcher)   pause消息
+- AMS -> Launcher     pause消息
+  
+  
+  
   ```java
   private void handlePauseActivity (){
   		...pause操作
@@ -34,38 +46,13 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
 
 #### 2.SystemServer与APP
 
-ActivityTaskSupervisor.startSpecificActivity
- └1.启动新进程：ActivityManagerService.startProcessLocked 
- └2.当前进程：ActivityTaskSupervisor.realStartActivityLocked
+AMS->ActivityTaskSupervisor
 
-AMS -> ATS -> ActivityStackSupervisor->ActivityThread 
+ActivityTaskSupervisor.  startSpecificActivity()
+ └如果进程不存在：请求AMS与zygote通信孵化进程startProcessAsync，待attach完毕，realStartActivityLocked
+ └进程存在：直接realStartActivityLocked	
 
-```java
-ActivityStackSupervisor.java
-void startSpecificActivityLocked(ActivityRecord r, boolean andResume, boolean checkConfig) {
-  // 获取要启动的Activity进程信息
-  final WindowProcessController wpc =
-    mService.getProcessController(r.processName, r.info.applicationInfo.uid);
-  boolean knownToBeDead = false;
-  //进程存在 -> 启动一个同应用的Activity（普通Activity就在此执行）
-  if (wpc != null && wpc.hasThread()) {
-    realStartActivityLocked(r, wpc, andResume, checkConfig);
-		return;		
-  }
-
-  //通过AMS向Zygote进程请求创建新的进程,进入ActivityThread Main方法
-  mService.startProcessAsync(r, knownToBeDead, isTop, isTop ? "top-activity" : "activity");
-}
-
-3.ActivityStackSupervisor  通过ApplicationThread 与 App 通信
- final boolean realStartActivityLocked(...){
-       ......
-       app.thread.scheduleLaunchActivity(...); //handler发送Launch消息
-       ......
- }
-```
-
-
+realStart -> scheduleLaunch
 
 #### 3.ActivityThread
 
@@ -78,6 +65,19 @@ ActivityThread.handleLaunchActivity->
 
 ```java
  //=======ActivityThread.java=======
+
+
+  public static void main(String[] args) {
+        Looper.prepareMainLooper();
+		
+        ActivityThread thread = new ActivityThread();
+        thread.attach(false, startSeq);
+     		//ActivityManager.getService().attachApplication(mAppThread, startSeq); 
+     //Ams发送BIND_APPLICATION消息
+       	Looper.loop();
+   }
+
+
  private void handleLaunchActivity(ActivityClientRecord r,
             PendingTransactionActions pendingActions, Intent customIntent）{
       ......
@@ -90,11 +90,10 @@ ActivityThread.handleLaunchActivity->
 private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
     		//mInstrumentation - new Actvitiy 
     		//mInstrumentation - new Application
-				//activity.attach(appContext) => 1.new phonewindow().setWindowManager() 2.关联parentWindow
+				//activity.attach(appContext) => 1.new phonewindow().setWindowManager() 
 				//mInstrumentation.callActivityOnCreate 
 				//setContentView()=>Phonewindow.setContentView() =>installdecor关联contentView
 }
-
 
  //========ActivityThread.java======
  final void handleResumeActivity(ActivityClientRecord r...){
@@ -106,7 +105,6 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
        r.activity.getWindowManager().addView(decor, layoutparams);//decor添加到window
        ......
  }
-
 ```
 
 #### 4.ViewRootImpl绘制任务
@@ -211,17 +209,7 @@ final long start = System.currentTimeMillis();
 
 getWindow().getDecorView().post(new Runnable() {
 
-    @Override
-
-    public void run() {
-
-    new Hanlder().post(new Runnable() {
-
-    @Override
-
-    public void run() {
-
-      Log.d(TAG, "onPause cost:" + (System.currentTimeMillis() - start));
+       Log.d(TAG, "onPause cost:" + (System.currentTimeMillis() - start));
 
     }
 ```

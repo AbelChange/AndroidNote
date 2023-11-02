@@ -65,7 +65,7 @@ public enum RetentionPolicy {
    /**
     * Annotations are to be discarded by the compiler.
 	* 场景： 编译阶段
-     *     APT -  AnnotationProcessor
+     *     APT -  AnnotationProcessorTool
 	 *	   编译时语法检查，@DrawableRes，@IntDef
       */
     SOURCE,

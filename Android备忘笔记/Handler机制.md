@@ -52,10 +52,12 @@ public final class Looper {
 
 ```java
 public final class MessageQueue {
-
     boolean enqueueMessage(Message msg, long when) {
-		nativeWake(mPtr);
+		//如果when == 0 或者小于队头when,则直接放入队列头部，会优先执行
+		//否则 根据when大小插入队列
+
 		//唤醒队列
+		nativeWake(mPtr);
     }
 		
     private int postSyncBarrier(long when) {
@@ -71,14 +73,16 @@ public final class MessageQueue {
             return token;
         }
     }
-    //这里保证了异步消息的优先级最大
+    //这里保证了异步消息的优先级最大，但是这里可以看出 异步消息 顺序不能保证，因为并没有插入队列的处理，只是取的时候进行了判断
+//如果需要保证顺序执行，使用同步Handler
+//其他情况可以使用异步消息，减轻looper压力
     Message next() {
 		int nextPollTimeoutMillis = 0;
         for (;;) {
-            //阻塞超时唤醒
+            //阻塞等待超时唤醒
             nativePollOnce(ptr, nextPollTimeoutMillis);
             synchronized (this) {
-                //关键地方，存在同步屏障，先处理异步消息
+                //关键地方，存在同步屏障，不移除，寻找下一个异步消息返回。
                 if (msg != null && msg.target == null) {
                     // Stalled by a barrier.  Find the next asynchronous message in the queue.
                     do {
@@ -86,7 +90,6 @@ public final class MessageQueue {
                         msg = msg.next;
                     } while (msg != null && !msg.isAsynchronous());
                 }
-                //再处理同步消息
                 if (msg != null) {
 				   if(msg.when没到时间){
                       nextPollTimeoutMillis = msg.when
