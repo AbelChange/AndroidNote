@@ -8,7 +8,7 @@
 
 ### Handler机制
 
-```java
+​```java
 class ActivityThread{
     public static void main(String[] args) {
 		//looper创建：new之后通过threadLocal绑定当前线程绑定当前线程
@@ -19,7 +19,7 @@ class ActivityThread{
 } 
 ```
 
-- 
+
 
 ```java
 public final class Looper {
