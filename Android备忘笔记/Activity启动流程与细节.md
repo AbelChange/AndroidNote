@@ -195,7 +195,7 @@ public final class Choreographer {
 
 
 
-### 题外话：绘制耗时
+### 题外话：启动耗时
 
 ```java
 @Override
