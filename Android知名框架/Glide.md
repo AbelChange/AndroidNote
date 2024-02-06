@@ -17,11 +17,18 @@ https://juejin.cn/user/4371313961737181 大佬
 
 ![glide缓存命中](..\image\glide缓存命中.jpg)
 
-ActiveResourceCache 作用：避免使用中的图片被MemoryLruCache   Recycle了，其容量没有限制
+ActiveResourceCache 作用？
+Map<Key, ResourceWeakReference>
+- 其容量没有限制，可以避免使用中的图片被MemoryLruCache回收机制Recycle了
+- 分层效率
 
 ActiveResourceCache 为何使用弱引用？ 
 
-通过 WeakReference构造中的referenceQueue 监测Resource引用数，计数为0时，在被GC回收之前，将EngineResource.resource放入MemoryCache （类似LeakCanary）
+- 更快地释放内存，减少内存压力
+
+- 通过 WeakReference构造中的referenceQueue 监测Resource引用数，计数为0时，在被GC回收之前，将EngineResource.resource放入MemoryCache （类似LeakCanary），然后放到memorycache
+
+
 
 ```kotlin
 
