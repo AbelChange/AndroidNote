@@ -146,33 +146,27 @@ Observable.from(students)
 
 #### 5.2flatmap 
 
-将一个Observable发送的items 转化为 Observables,
+将有序的事件转化为新的并行事件
 
-```java
-final List<Integer> numbers = new ArrayList<>(Arrays.asList(2, 3, 4, 5, 6, 7, 8, 9, 10));
-Disposable subscribe = Observable.fromIterable(numbers)
-    .observeOn(Schedulers.computation())
-    .flatMap(new Function<Integer, ObservableSource<Integer>>() {
-        @Override
-        public ObservableSource<Integer> apply(@NonNull Integer integer) {
-            return Observable.just(integer * integer);
-        }
-    })
-    .observeOn(AndroidSchedulers.mainThread())
-    .subscribe(new Consumer<Integer>() {
-        @Override
-        public void accept(Integer integer) throws Exception {
-            LogUtils.e(integer);
-        }
-    });
-//通过一组新创建的 Observable 将初始的对象发送的事件map到一组Observables,然后merge发送
-//场景：串行嵌套任务
-//原理：lift 操作进行代理
+- flatMap 会同时订阅并转换每个发射的项目，可以并行处理发射的项目，但不按照发射顺序。
+- 提高并发性
+- flatMap 可以交错合并多个 Observable 的发射物
+
+```kotlin
+Observable.just(1, 2, 3)
+    .flatMap {
+        Observable.just(it * 10)
+            .subscribeOn(Schedulers.io())
+    }
+    .subscribe { println("flatMap result: $it") }
+
 ```
 
 #### 5.3concatMap
 
- 将Observavkes 有序铺平，flatmap是merge操作符,concatMap是concat
+- `concatMap` 会按顺序处理每个发射的项目，保证项目的顺序。
+
+  
 
 #### 5.4buffer
 

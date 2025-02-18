@@ -1,5 +1,7 @@
 ## Kotlin基础语法
 
+函数式，响应式，扩展函数，标准函数
+
 [TOC]
 
 
@@ -8,10 +10,16 @@
 
 ```kotlin
 //val 只有get,var 既有setter又有getter
-val size: Int
+private val size: Int
     get() { // 👈 每次获取 size 值时都会执行 items.size
         return items.size
     }
+//setter
+private var length:Int = 0
+		set(value){
+      field = value
+    }
+
 // lambda 表达式中的最后一个表达式是返回值
   val str:String? = "Dsadsa"
     val lenth = str?.length?:{
@@ -374,9 +382,12 @@ enum class Direction(val degrees: Int) {
 ```kotlin
 //抽象的，它不能直接实例化
 //只能被同一个kt文件中的类使用
+//枚举只能有一个实例，而密封类的子类可以有多个实例
+//和when搭配更舒服
 sealed class Seal
 class SeaLion : Seal()
-class Walrus : Seal()
+class Walrus ("允许个别成员拥有自己特殊属性"): Seal()
+object Hahs :Seal()
 
 fun matchSeal(seal: Seal): String {
    return when(seal) {
@@ -428,7 +439,7 @@ class MyClass {
 }
 
 //companion object 与 regular objects 的区别：
-//Companion object 随类加载，本质是静态单例内部类
+//Companion object 随宿主加载，本质是静态单例内部类
 //普通 object 随对象加载
 //为了在java中调用，需要给 Companion object的静态成员添加@JvmStatic注解
 ```
@@ -437,14 +448,14 @@ class MyClass {
 
 ```kotlin
 // let //表示object不为null的条件下，才会去执行let函数体
-object?.let{
+obj?.let{
 }
 
 // with 适用于调用同一个类的多个方法时，可以省去类名重复，直接调用类的方法即可
 override fun onBindViewHolder(holder: ViewHolder, position: Int){
    val item = getItem(position)?: return
    with(item){
-      	holder.tvNewsTitle.text = StringUtils.trimToEmpty(titleEn)
+     holder.tvNewsTitle.text = StringUtils.trimToEmpty(titleEn)
 	   holder.tvNewsSummary.text = StringUtils.trimToEmpty(summary)
 	   holder.tvExtraInf.text = "难度：$gradeInfo | 单词数：$length | 读后感: $numReviews"
    }
@@ -544,13 +555,13 @@ EditText().addTextChangedListener(object : TextWatcher {
 ```
 背景：lambad作为参数，调用者在调用时候会产生匿名对象
 
-//inline 内联优化 
-避免产生匿名对象，将函数铺平
+//inline 修饰函数,内联优化 
+避免产生匿名对象，将函数铺平，使用 inline + reified可以保留泛型信息
 
-//noinline参数 是局部指向性的屏蔽该优化
-让lambada参数可以作为对象使用
+//noinline修饰参数 是局部指向性的屏蔽该优化
+某个参数取消该效果,可以使用该参数作为对象，传递或返回
 
-//crossinline 避免函数被lambda提前返回
+//crossinline修饰参数 避免函数被lambda提前返回
 高阶函数无法返回main
 inline的高阶函数，可以返回main,也可以返回lambada
 使用crossinline可限制调用方只能返回到lambada

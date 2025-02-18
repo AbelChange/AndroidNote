@@ -23,12 +23,12 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
 
 1.点击图标，Launcher向AMS请求创建根Activity
 2.如果无进程，AMS通知Zygote  fork出 目标进程 进入 Main函数  
-3.main函数 将当前applicationThread关联到Ams
+3.main函数 将当前applicationThread :binder关联到Ams
 4.AMS通过ApplicationThread发送launch消息到ActivityThread.H
 
 ### 源码细节
 
-#### 1.Launcher进程与SystemServer
+#### 1.Launcher进程与SystemServer进程
 
 - Launcher -> AMS     startActivity
 
@@ -44,7 +44,7 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
    }                 
   ```
 
-#### 2.SystemServer与APP
+#### 2.SystemServer与APP进程
 
 AMS->ActivityTaskSupervisor
 
@@ -125,7 +125,8 @@ class ViewRootImpl{
           //发送同步屏障,屏蔽默认handler发送的同步消息
          mHandler.getLooper().getQueue().postSyncBarrier();
    		//Posts a callback to run on the next frame（当vsync信号来之后执行）
-			//该消息是异步的，绘制任务得以优先于异步消息执行
+			//该消息是异步的，优先于同步消息执行
+      //卡顿原因1.此时如果有其他耗时消息在分发 就可能回掉帧
       mChoreographer.postCallback(
                           Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
       }
@@ -164,7 +165,7 @@ class ViewRootImpl{
 }
 
 //收到系统vsync信号，才会开始实际绘制任务
-
+//负责请求和接收 Vsync 信号
 public final class Choreographer {
     
 	   private final class FrameHandler extends Handler {
@@ -176,6 +177,7 @@ public final class Choreographer {
         public void handleMessage(Message msg) {
             switch (msg.what) {
                 case MSG_DO_FRAME:
+                		//卡顿原因2.过度绘制下一个信号来时候这一帧还没绘制完成
                     doFrame();//-->doCallbacks(Choreographer.CALLBACK_TRAVERSAL);
                     break;
             }

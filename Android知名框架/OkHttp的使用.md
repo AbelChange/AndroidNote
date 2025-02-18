@@ -22,6 +22,7 @@ client.newCall(request).enqueue(Callback responseCallback);
   internal fun getResponseWithInterceptorChain(): Response {
     // Build a full stack of interceptors.
     val interceptors = mutableListOf<Interceptor>()
+		//通过addInterceptor加入的拦截器
     interceptors += client.interceptors
 		//对某些错误进行重试，这些错误包括401、408 、部分3XX的错误
 		//可以通过retryOnConnectFailure进行配置是否生效，默认有效
@@ -33,6 +34,7 @@ client.newCall(request).enqueue(Callback responseCallback);
 		//判断是复用连接还是新建连接
     interceptors += ConnectInterceptor
     if (!forWebSocket) {
+			//通过addNetworkInterceptor加入的拦截器
       interceptors += client.networkInterceptors
     }
 		//发起请求
