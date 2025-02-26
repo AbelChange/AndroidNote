@@ -4,11 +4,7 @@
 
 [TOC]
 
-```
-
-### Handler机制
-
-​```java
+```java
 class ActivityThread{
     public static void main(String[] args) {
 		//looper创建：new之后通过threadLocal绑定当前线程绑定当前线程
@@ -20,6 +16,23 @@ class ActivityThread{
 ```
 
 
+```java
+    public final boolean sendMessageDelayed(@NonNull Message msg, long delayMillis) {
+        if (delayMillis < 0) {
+            delayMillis = 0;
+        }
+				//Returns milliseconds since boot, not counting time spent in deep sleep
+				//开机时长
+        return sendMessageAtTime(msg, SystemClock.uptimeMillis() + delayMillis);
+    }
+```
+
+
+| 方法                    | 返回值                              | 适用场景                                      |
+|-------------------------|-------------------------------------|-----------------------------------------------|
+| **`currentTimeMillis()`**| 1970年1月1日以来的实际时间（Unix 时间戳） | 获取实际当前时间，时间戳对比，日期计算        |
+| **`elapsedRealtime()`**  | 设备开机时长（总） | 测量设备从开机到现在的时间，比较少使用              |
+| **`uptimeMillis()`**     | 设备开机时长（活跃，不包括睡眠） | handler 计算when  = SystemClock.uptimeMillis() + delayMillis |
 
 ```java
 public final class Looper {

@@ -185,10 +185,8 @@ An observer added via `observeForever(Observer)` is considered as always active 
 
 ### LiveData为啥连续postValue两次，第一次值会丢失?
 
-- 只有pendingData值为初始值才会 postRunnable,处理结束会设置为初始值
-- 如果post的 r 还未被主线程处理，即pendingData还有值时
-- 再次post，只是修改pendingData，不会发送新的 r ，避免频繁切换线程带来开销
-- 第二次只是赋值，没有重新postMainThread()
+- 中间变量mPendingData记录当前值，Runnable执行结束后mPendingData = NOT_SET
+- 如果已经有值，就只是修改pendingData，不post了
 
 ```java
     protected void postValue(T value) {

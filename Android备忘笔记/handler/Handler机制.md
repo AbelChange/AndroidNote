@@ -2,8 +2,6 @@
 
 [TOC]
 
-![handler模式](https://img-blog.csdnimg.cn/e44e8cb0d48e40819dc10b792e118ee4.png)
-
 ### 1.消息入队
 
 ```
@@ -61,7 +59,7 @@ class ActivityThread{
     public static void main(String[] args) {
 		//looper创建：new之后通过threadLocal绑定当前线程绑定当前线程
 		Looper.prepareMainLooper(); 
-		new Handler(); //此处判断是否已经创建looper,如果未创建则抛异常
+		new Handler(); //此处判断是否已经创建looper,如果未创建则抛异常,Only one Looper may be created per thread
         Looper.loop();//Looper持有MessageQueue,将消息不断的取出，发送到Message的target(Handler)
     }
 } 

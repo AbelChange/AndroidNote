@@ -1,4 +1,4 @@
-## Activity启动流程与细节
+## UI绘制流程
 
 [TOC]
 
@@ -11,15 +11,13 @@ git clone -b android-13.0.0_r37  git@github.com:aosp-mirror/platform_frameworks_
 
 
 
-
-
 ![启动流程涉及进程间通信](./img/启动流程涉及进程间通信.webp)
 
 
 
 
 
-### 简单介绍
+### Activity启动简单介绍
 
 1.点击图标，Launcher向AMS请求创建根Activity
 2.如果无进程，AMS通知Zygote  fork出 目标进程 进入 Main函数  
@@ -56,8 +54,7 @@ realStart -> scheduleLaunch
 
 #### 3.ActivityThread
 
-ActivityThread.handleLaunchActivity->
-    └Activity.onCreate   : 关联contentView与decorView
+ActivityThread.handleLaunchActivity->Activity.onCreate   : 关联contentView与decorView
 	└handleResumeActivity
        └Activity.onStart->
        └Activity.onResume->
@@ -92,7 +89,7 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
     		//mInstrumentation - new Application
 				//activity.attach(appContext) => 1.new phonewindow().setWindowManager() 
 				//mInstrumentation.callActivityOnCreate 
-				//setContentView()=>Phonewindow.setContentView() =>installdecor关联contentView
+				//setContentView()=>PhoneWindow.setContentView() =>new DecorView()关联contentView
 }
 
  //========ActivityThread.java======
@@ -101,25 +98,55 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
        performResumeActivity(token, clearHide, reason);
      
        View decor = r.activity.getWindow().getDecorView();
-
-       r.activity.getWindowManager().addView(decor, layoutparams);//decor添加到window
+				//WindowManagerImpl.addView->WindowManagerGlobal.addView
+       r.activity.getWindowManager().addView(decorView)
        ......
  }
+
+//=======WindowManagerGlobal.java //管理所有ViewRootImpls
+
+		private final ArrayList<View> mViews;
+    private final ArrayList<ViewRootImpl> mRoots;
+		private final ArrayList<WindowManager.LayoutParams> mParams;
+    public void addView(View view, ViewGroup.LayoutParams params,
+            Display display, Window parentWindow, int userId) {
+			//new ViewRootImpl.setView 管理decor以及之下的view树
+		   ViewRootImpl root =	new ViewRootImpl(view.getContext(), display,
+               windowlessSession)
+		   mViews.add(view);
+       mRoots.add(root);
+       mParams.add(wparams);	
+			 root.setView(view, wparams, panelParentView, userId);
+    }
+
+
 ```
 
-#### 4.ViewRootImpl绘制任务
+#### 4.ViewRootImpl绘制任务实际执行
 
-ViewRootImpl.setView->
-ViewRootImpl.requestLayout->
+ViewRootImpl.setView 
+ └ViewRootImpl.requestLayout-> 
  └ViewRootImpl.scheduleTraversals->
  └Choreographer.postCallback->
 
 ```java
 
 class ViewRootImpl{
-   // setView()
-    //-->requestLayout()
-    //-->scheduleTraversals()  不是立即执行，只是将任务丢给 Choreographer 
+   		// setView()->requestLayout()
+			void setView(View view, WindowManager.LayoutParams attrs, View panelParentView,
+            int userId){
+						//decorview的parent就是ViewRootImpl
+            view.assignParent(this);
+      }
+			
+      void requestLayout() {
+            if (!mHandlingLayoutInLayoutRequest) {
+                checkThread();//检测ViewRootImpl创建线程和当前绘制线程是否一致，不一致抛异常
+                mLayoutRequested = true;
+                  //不是立即执行，只是将任务丢给 Choreographer 
+                scheduleTraversals();
+            }
+        }
 
       void scheduleTraversals(){
           //发送同步屏障,屏蔽默认handler发送的同步消息
@@ -131,17 +158,28 @@ class ViewRootImpl{
                           Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
       }
 
-
-  	void  doTraversal(){
-				//移除同步屏障
- 			 mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);   
-				//绘制
-    	 performTraversals（）
-    } 
+    final class TraversalRunnable implements Runnable {
+        @Override
+        public void run() {
+            doTraversal(){
+               //移除同步屏障
+               mHandler.getLooper().getQueue().removeSyncBarrier(mTraversalBarrier);   
+                //绘制
+               performTraversals（）
+            }
+        }
+    }
 
 	void performTraversals(){
-        final View host = mView;
-			  host.dispatchAttachedToWindow()  //使用handler发送消息
+        final View host = mView;//decorView
+    		if(mFirst){
+          	//decorview 分发 AttachInfo到子view，标志view已经被添加到window
+						//view.post的任务这时可以进行handler.post了
+            host.dispatchAttachedToWindow(mAttachInfo, 0);
+						mAttachInfo.mTreeObserver.dispatchOnWindowAttachedChange(true);
+        }
+				getRunQueue().executeActions(mAttachInfo.mHandler);
+				//开启绘制
         performMeasure()
 				performLayout()
 				performDraw()    
@@ -194,24 +232,70 @@ public final class Choreographer {
 }
 ```
 
+### 获取view宽高
 
-
-
-### 题外话：启动耗时
-
-```java
-@Override
-
-
-protected void onResume() {
-
-super.onResume();
-
-final long start = System.currentTimeMillis();
-
-getWindow().getDecorView().post(new Runnable() {
-
-       Log.d(TAG, "onPause cost:" + (System.currentTimeMillis() - start));
-
+```kotlin
+    private fun getMeasuredWidthHeight() {
+        //拿不到
+        Handler(Looper.getMainLooper()).post{
+            Log.d("MainActivity-handler.post","width:${binding.root.width},height:${binding.root.height} ")
+        }
+        //可以
+        binding.root.doOnLayout {
+            Log.d("MainActivity-doOnLayout","width:${binding.root.width},height:${binding.root.height} ")
+        }
+        //可以
+        binding.root.doOnPreDraw {
+            Log.d("MainActivity-doOnPreDraw","width:${binding.root.width},height:${binding.root.height} ")
+        }
+        //可以
+        binding.root.post {
+            Log.d("MainActivity-view.post","width:${binding.root.width},height:${binding.root.height} ")
+        }
     }
 ```
+
+### View.invalidate与requestLayout
+
+requestLayout方法会导致view measure与layout，而draw不一定被执行
+
+Invalidate 只会导致draw重新执行
+
+```java
+public class View{	
+      void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,
+              boolean fullInvalidate) {// 3
+              ...
+              final ViewParent p = mParent;
+              if (p != null && ai != null && l < r && t < b) {
+                  p.invalidateChild(this, damage);
+              }
+            
+              ...
+      }
+}
+```
+
+都是**逐步向上请求**的过程，decorview的viewParent是ViewRootImpl,到这里后checkThread会执行，导致
+`Only the original thread that created a view hierarchy can touch its views.`
+即只有创建ViewRootImpl 即view树的线程可以修改其中的view 
+
+例外:但是如果在onCreate中进行子线程更新UI,由于ViewRootImpl还没创建，所以不会出问题
+
+
+```java
+public class View{	
+      void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,
+              boolean fullInvalidate) {// 3
+              ...
+              final ViewParent p = mParent;
+              if (p != null && ai != null && l < r && t < b) {
+                  p.invalidateChild(this, damage);
+              }
+            
+              ...
+      }
+}
+```
+
+

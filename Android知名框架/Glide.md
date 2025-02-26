@@ -32,7 +32,7 @@ DiskCache：
 
 ActiveResourceCache 为何使用弱引用？ 
 
-- 随时被系统回收，减少内存压力,不会造成OOM
+- 不影响GC回收，避免OOM
 - 保证使用中的图片不会被Lru算法回收
 - 通过 WeakReference构造中的referenceQueue 监测Resource回收，放进Lru中
 
