@@ -16,25 +16,28 @@ https://juejin.cn/user/4371313961737181 大佬
 
 
 
-![glide缓存命中](..\image\glide缓存命中.jpg)
+![glide缓存命中](img/Glide/glide%E7%BC%93%E5%AD%98%E5%91%BD%E4%B8%AD.jpg)
 
 3.Glide三级缓存，
 
 MemoryCache：
 
 - ActiveResources（活动缓存，弱引用缓存，提高命中效率）
+
+  为何使用弱引用？ 
+
+  > 资源以 **WeakReference + ReferenceQueue** 管理，GC回收时可感知。
+  >
+  > 如果放到lru里会被主动回收，如果图片在使用中就会出问题
+
 - Memorycache（Lru）
+
+  主动回收图片
 
 DiskCache：
 
 - Resource 解码，转换后的图片
 - Data 解码之前的数据
-
-ActiveResourceCache 为何使用弱引用？ 
-
-- 不影响GC回收，避免OOM
-- 保证使用中的图片不会被Lru算法回收
-- 通过 WeakReference构造中的referenceQueue 监测Resource回收，放进Lru中
 
 ```kotlin
 

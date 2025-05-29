@@ -1,5 +1,7 @@
 ### 进程间通信
 
+https://github.com/linxu-link/CarServerArch
+
  aidl支持传输的数据类型
 
 - 八种基本数据类型：byte、char、short、int、long、float、double、boolean

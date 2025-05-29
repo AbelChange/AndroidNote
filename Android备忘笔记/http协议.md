@@ -208,12 +208,35 @@ Content-Range:bytes =1000-2000,5001-10000
 
 .https对称加密与非对称加密，在交换密钥环节使用非对称，交换完密钥使用对称，动态下发
 
-#### 避免中间人攻击抓包方案：
+#### 避免中间人攻击(Charles Fiddler)抓包方案
 
-- SSl pinning(客户端校验服务端证书)与双向认证（服务端与客户端都进行证书校验）
+- 证书校验
 
-- SSl pinning =证书固 或 公钥固定（避免证书有效期问题）
-  
+| **模式** | **信任系统证书** | **信任用户证书** | **信任自定义证书（如 my_ca.crt）** |
+| -------- | ---------------- | ---------------- | ---------------------------------- |
+| Debug    | ✅ 是             | ✅ 是             | ✅ 是                               |
+| Release  | ✅ 是             | ❌ 否             | ✅ 是                               |
+
+> app层
+
+```xml
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">your.domain.com</domain>
+        <trust-anchors>
+            <certificates src="@raw/my_cert" />
+        </trust-anchors>
+    </domain-config>
+</network-security-config>
+```
+
+root设备可以替换系统证书，只在高版本有效，低版本还是可以抓
+
+> 网络框架层
+
+ X509TrustManager 自定义证书校验行为
+信任自定义证书 + 系统证书
+
 
 #### 密钥动态下发：
 

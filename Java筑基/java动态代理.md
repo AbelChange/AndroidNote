@@ -145,5 +145,7 @@ public class WiredUtil {
 
 ### 4.Retrofit反射，注解，动态代理
 
+> 动态代理：“在不修改原始代码的情况下，**对接口的方法调用进行一层“包装”或“修饰”**。”
+
 https://blog.csdn.net/botai2120/article/details/100951283?utm_medium=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Edefault-17.no_search_link&depth_1-utm_source=distribute.pc_relevant.none-task-blog-2%7Edefault%7EBlogCommendFromBaidu%7Edefault-17.no_search_link
 

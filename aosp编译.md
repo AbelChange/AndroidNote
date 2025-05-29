@@ -2,17 +2,13 @@
 
 [toc]
 
-## AOSP编译
+# AOSP编译
 
-### 名词
-
-AOSP:*Android Open Source Project*
-
-Android 是适用于各种不同规格设备的操作系统。任何人都可以通过AOSP)查看 Android 的文档和源代码。您可以使用 AOSP 为自己的设备创建自定义 Android OS 变体。
-
-*Android 第一方应用开发者*:有权访问 AOSP 系统 API 并编写特权应用程序和设备制造商应用程序的 Android 应用程序开发人员。
-
-*Android 第三方应用开发者*:仅使用 Android 公共 SDK 来创建 Android 应用程序的 Android 应用程序开发人员。
+> AOSP:*Android Open Source Project*
+>
+> Android 是适用于各种不同规格设备的操作系统。任何人都可以通过AOSP)查看 Android 的文档和源代码。您可以使用 AOSP 为自己的设备创建自定义 Android OS 变体。
+>
+> *Android 第一方应用开发者*:有权访问 AOSP 系统 API 并编写特权应用程序和设备制造商应用程序的 Android 应用程序开发人员。*Android 第三方应用开发者*:仅使用 Android 公共 SDK 来创建 Android 应用程序的 Android 应用程序开发人员。
 
 ## 1. 系统要求与配置
 
@@ -23,6 +19,23 @@ Android 是适用于各种不同规格设备的操作系统。任何人都可以
 ## 2. 获取aosp源码
 
 https://source.android.com/docs/setup/download/downloading?hl=zh-cn
+
+>在服务器上下载/编译 Android，可能需要几个小时。如果你：
+>
+>- 使用普通终端，断线=任务中断 😫
+>- 使用 tmux，断线后可以 **重新连接继续操作** 😎
+
+
+
+```bash
+tmux new -s aosp          # 新建一个叫 aosp 的会话
+
+tmux attach -t aosp       # 重新连接 aosp 会话
+
+tmux kill-session -t aosp # 杀掉 aosp 会话
+```
+
+
 
 ```shell
 
@@ -52,53 +65,32 @@ export REPO_URL='https://mirrors.tuna.tsinghua.edu.cn/git/git-repo/'
 git config --global user.name  "User Name"
 git config --global user.email "user@example.com"
 
-# ⑥ 初始化仓库 (同样支持替换镜像源)
-repo init -u https://android.googlesource.com/platform/manifest
-# 也支持指定分支，可选值查看：https://source.android.com/source/build-numbers#source-code-tags-and-builds
-repo init -u https://mirrors.tuna.tsinghua.edu.cn/git/AOSP/platform/manifest -b android-13.0.0_r83
+# ⑥ 初始化仓库 与 选中分支 (同样支持替换镜像源) 
+#可选值查看：https://source.android.com/source/build-numbers#source-code-tags-and-builds
+#kenel编译限制：https://source.android.google.cn/docs/setup/reference/bazel-support?hl=en
+#gsi分支源码编译限制：https://ci.android.com/builds/branches/aosp-android14-gsi/grid?legacy=1
+repo init -c -u https://mirrors.tuna.tsinghua.edu.cn/git/AOSP/platform/manifest -b android-14.0.0_r1
 
-
-
-# ⑦ 同步代码 (拉取aosp源码到工作目录，一般要几个小时) 
+# ⑦ 同步代码 (拉取aosp源码到工作目录，一般要几个小时) https://source.android.com/docs/automotive/start/pixelxl?hl=zh-cn
 #加上 -c 参数，仅同步当前android-13.0.0_r82分支，节约下载时间
-repo sync -c 
-
-#减少出错更新 repo
-cd .repo/repo/
-git pull
-
-#.repo/manifests.git/下存储了版本相关信息
-cd .repo/manifests.git
-git branch -av | grep android-13
+repo sync -c -j4 --fail-fast --force-sync
+repo info #可以查看当前repo信息
 
 #下载过程可能出现某些project找不到，可能是镜像问题，也可能是网的问题，
 # 试试可以单独同步该项目，支持-jN参数，-j4如：
 repo sync -c platform/frameworks/layoutlib
-
+repo sync -c -j1 --fail-fast --force-sync
 
 # ⑧ Tips：
 #下载后进行初始化再同步，效率会高很多
 curl -OC - https://mirrors.tuna.tsinghua.edu.cn/aosp-monthly/aosp-latest.tar 
 
 tar -xvf aosp-latest.tar  -C aosp/
-
-
-repo init -u https://mirrors.tuna.tsinghua.edu.cn/git/AOSP/platform/manifest -b android-13.0.0_r83
-
-
-# 附：aosp不包含内核代码，有需要可以单独下载，版本有很多，如：
-# common → 通用linux内核、goldfish → Android模拟器内核、msm → 高通MSM芯片
-mkdir kernel
-cd kernel
-git clone https://aosp.tuna.tsinghua.edu.cn/kernel/goldfish.git
-cd goldfish
-# 可以查看有哪些内核版本分支可以下载
-git branch -a
-# 下载对应版本内核代码
-git checkout remotes/origin/android-goldfish-3.4
 ```
 
-repo sync issues集合：https://developer.aliyun.com/article/1599065
+#repo sync issues集合：https://developer.aliyun.com/article/1599065
+
+
 
 ## 3. 构建Android
 
@@ -111,110 +103,232 @@ repo sync issues集合：https://developer.aliyun.com/article/1599065
 
 ### aosp源码编译后会生成一系列的产物(out目录下)：
 
-- /out/host → Android开发工具相关的产物，包含各种SDK工具，如adb、dex2oat、aapt等；
-- /out/target/common → 一些通用的编译产物，包含Java应用代码和Java库；
-- /out/target/product/[product_name] → 针对特定设备的编译产物，以及平台相关C/C++代码与二进制文件(如system.img、ramdisk.img、userdata.img、boot.img等)；
+### 3.1编译
 
-### 3.1 aosp下解压执行驱动->vendor
+**编译产物**
 
-  ```shell
-  #1.当前repo对应的分支信息
-  cd .repo/manifests
-  git log
-  
-  #2.下载
-  #buildId与tag的对应关系 https://source.android.com/docs/setup/reference/build-numbers?hl=zh-cn
-  #TQ3A.230805.001.S1	android-13.0.0_r83
-  #驱动下载地址 with buildId--  https://developers.google.com/android/drivers?hl=zh-cn
-  
-  #3.放到根目录解压
-  tar -xvzf qcom-sunfish-tq3a.230805.001.s1-377dd9d9.tgz
-  tar -xvzf google_devices-sunfish-tq3a.230805.001.s1-2a7bf157.tgz
-  #解压得到2个sh自释放文件
-  extract-google devices-walleye.sh extract-gcom-walleye.sh
-  #4.安装
-  ./extract-google_devices-sunfish.sh
-  ./extract-qcom-sunfish.sh
-  #看完license输入 I ACCEPT 安装完成，此时会创建vendor文件夹
-  ```
-
-### 3.1 **整编**
+> /out/host → Android开发工具相关的产物，包含各种SDK工具，如adb、dex2oat、aapt等；
+>
+> /out/target/common → 一些通用的编译产物，包含Java应用代码和Java库；
+>
+> /out/target/product/[product_name] → 针对特定设备的编译产物，以及平台相关C/C++代码与二进制文件(如system.img、ramdisk.img、userdata.img、boot.img等)；
 
 ```shell
 # ① 初始化环境
 source build/envsetup.sh
 
 # ② 删除out与中间文件，clean会删除本次设置生成的、clobber会删除所有配置生成的
-make clobber
+m clobber	#清除所有编译缓存，相当于rm -rf out/
+m clean	#清除编译缓存，out/target/product/[product_name]
+m installclean	#清除所有二进制文件
 
-# ③ 选择编译目标，下述命令会进入菜单，选择相应的版本，输入序号回车
-# 编译目标都采用 BUILD-BUILDTYPE 形式，BUILD 表示特定功能代号，BUILDTYPE是以下类型之一：
-# user → 权限受限、适用于生产环境，没root权限，不能debug，adb默认处于停用状态；
-# userdebug → 与user类似，但具备root权限和debug权限，一般用于调试真机。
-# eng → 具有额外调试工具的开发配置，拥有最大的权限(root等)，一般用于模拟器。
-# 编译目标示例 → Pixel 3a XL的编译目标 → aosp_bonito-userdebug
+# ③ 选择编译目标
+#menu 选择
+lunch
+#直接选择 
 lunch aosp_sunfish_car-userdebug
-# ③ 开始编译，后面的-jN参数用来设置编译的并行任务数，CPU核心数为6，N值最好选6-12间
-# 根据自己CPU核心数动态修改哈，见过有32的~
-m -j
 
-# 也可以把输出结果打印到log文件中：make -j6 2>&1 | tee build_20211206_1403.log
+# ④ 开始编译，后面的-jN参数用来设置编译的并行任务数，CPU核心数为6，N值最好选6-12间
+# 根据CPU核心数动态修改
+m -j20
 
-# 编译成功后会生成out目录，比如这里的：~/aosp/out/target/product/<device>
-#out/target/product/<device>/obj/STATIC_LIBRARIES/framework_intermediates/android.jar
+# 可以把输出结果打印到log文件中：make -j6 2>&1 | tee build_20211206_1403.log
 
 # Tips：有需要还可以键入：make sdk，编译SDK生成修改后的android.jar
-```
 
-- out/target/product/generic_x86/目录生成了三个重要的镜像文件： system.img、userdata.img、ramdisk.img。
-
-- system.img：系统镜像，里面包含了Android系统主要的目录和文件，通过init.c进行解析并mount挂载到/system目录下。
-- userdata.img：用户镜像，是Android系统中存放用户数据的，通过init.c进行解析并mount挂载到/data目录下。
-- ramdisk.img：根文件系统镜像，包含一些启动Android系统的重要文件，比如init.rc
-
-### 3.2 **单编**
-
-```shell
-source build/envsetup.sh
-lunch 
-# 进入模块目录
-cd package/apps/Setting
 #单编
-m
+cd package/apps/Setting m 或者 mmm xxx
 
 # 编译单独模块的可选指令如下：
-# mm → 编译当前目录下的模块，不编译依赖模块
+# mm → 编译当前目录下的模块，不编译依赖模块 
 # mmm → 编译指定目录下的模块，不编译依赖模块
 # mma → 编译当前目录下的模块及其依赖项
 # mmmma → 编译指定路径下所有模块，切包含依赖
-mm
+```
 
+**编译错误解决**
+
+ninja failed with: exit status 137 ，构建过程由于内存问题而终止，具体系统日志/var/log/syslog  OOM->kill ninja
+
+```shell
+#执行
+sudo vim build/soong/java/config/config.go    
+#或     
+sudo gedit build /soong/ java/config/ config.go
+#把2048修改为4096关闭当前编译Terminal窗⼝
+pctx.StaticVariable("JavacHeapSize" , "4096M") 
+```
+
+```shell
+#配置
+sudo vim ~/.bashrc
+export MAVEN_OPTS="-Xms8g -Xmx8g"
+#编译启动后看是否生效 
+grep "JavacHeapSize" out/soong/build.ninja
+```
+
+> https://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650271897&idx=1&sn=47e3e0c45a1c832f9e1af91d9b9c5d87&chksm=886301f6bf1488e0a23e57857352f8c1d771dae9bcef4ceb96600d76310157ffb74998ab542b&scene=27
+
+![image-20250529172011221](img/aosp%E7%BC%96%E8%AF%91/image-20250529172011221.png)
+
+编译产物为266G  
+
+### 3.2AS查看源码
+
+```shell
+#根目录执行，生成idegen.jar
+mmm development/tools/idegen/
+
+#源码根目录生成android.ipr和android.iml
+sudo development/tools/idegen/idegen.sh 
+
+sudo chmod 777 android.iml
+sudo chmod 777 android.ipr
+
+#编辑 android.iml 排除不需要的模块,如下表
+
+#as 打开android.ipr
+
+#修改sdk/jdk指向
 
 ```
 
-编译错误解决：
+```xml
+<excludeFolder url="file://$MODULE_DIR$/./external/emma"/>
+<excludeFolder url="file://$MODULE_DIR$/./external/jdiff"/>
+<excludeFolder url="file://$MODULE_DIR$/out/eclipse"/>
+<excludeFolder url="file://$MODULE_DIR$/.repo"/>
+<excludeFolder url="file://$MODULE_DIR$/external/bluetooth"/>
+<excludeFolder url="file://$MODULE_DIR$/external/chromium"/>
+<excludeFolder url="file://$MODULE_DIR$/external/icu4c"/>
+<excludeFolder url="file://$MODULE_DIR$/external/webkit"/>
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/docs"/>
+<excludeFolder url="file://$MODULE_DIR$/out/host"/>
+<excludeFolder url="file://$MODULE_DIR$/out/target/common/docs"/>
+<excludeFolder url="file://$MODULE_DIR$/out/target/common/obj/JAVA_LIBRARIES/android_stubs_current_intermediates"/>
+<excludeFolder url="file://$MODULE_DIR$/out/target/product"/>
+<excludeFolder url="file://$MODULE_DIR$/prebuilt"/>
+<excludeFolder url="file://$MODULE_DIR$/external/chromium" />
+<excludeFolder url="file://$MODULE_DIR$/external/icu4c" />
+<excludeFolder url="file://$MODULE_DIR$/external/webkit" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/docs" />
+<excludeFolder url="file://$MODULE_DIR$/hardware" />
+<excludeFolder url="file://$MODULE_DIR$/kernel" />
+<excludeFolder url="file://$MODULE_DIR$/libcore" />
+<excludeFolder url="file://$MODULE_DIR$/libnativehelper" />
+<excludeFolder url="file://$MODULE_DIR$/ndk" />
+<excludeFolder url="file://$MODULE_DIR$/out" />
+<excludeFolder url="file://$MODULE_DIR$/out/eclipse" />
+<excludeFolder url="file://$MODULE_DIR$/out/host" />
+<excludeFolder url="file://$MODULE_DIR$/out/target/common/docs" />
+<excludeFolder url="file://$MODULE_DIR$/out/target/common/obj/JAVA_LIBRARIES/android_stubs_current_intermediates" />
+<excludeFolder url="file://$MODULE_DIR$/out/target/product" />
+<excludeFolder url="file://$MODULE_DIR$/pdk" />
+<excludeFolder url="file://$MODULE_DIR$/platform_testing" />
+<excludeFolder url="file://$MODULE_DIR$/prebuilt" />
+<excludeFolder url="file://$MODULE_DIR$/prebuilts" />
+<excludeFolder url="file://$MODULE_DIR$/sdk" />
+<excludeFolder url="file://$MODULE_DIR$/shortcut-fe" />
+<excludeFolder url="file://$MODULE_DIR$/toolchain" />
+<excludeFolder url="file://$MODULE_DIR$/tools" />
+<excludeFolder url="file://$MODULE_DIR$/QNX" />
+<excludeFolder url="file://$MODULE_DIR$/QNX_vendor" />
+<excludeFolder url="file://$MODULE_DIR$/test" />
+<excludeFolder url="file://$MODULE_DIR$/system" />
+<excludeFolder url="file://$MODULE_DIR$/out_images" />
+<excludeFolder url="file://$MODULE_DIR$/external" />
+<excludeFolder url="file://$MODULE_DIR$/AMSS" />
+<excludeFolder url="file://$MODULE_DIR$/developers" />
+<excludeFolder url="file://$MODULE_DIR$/development" />
+<excludeFolder url="file://$MODULE_DIR$/build" />
+<excludeFolder url="file://$MODULE_DIR$/device" />
+<excludeFolder url="file://$MODULE_DIR$/vendor" />
+<excludeFolder url="file://$MODULE_DIR$/cts" />
+<excludeFolder url="file://$MODULE_DIR$/dalvik" />
+<excludeFolder url="file://$MODULE_DIR$/bootable" />
+<excludeFolder url="file://$MODULE_DIR$/compatibility" />
+<excludeFolder url="file://$MODULE_DIR$/bionic" />
+<excludeFolder url="file://$MODULE_DIR$/art" />
+<excludeFolder url="file://$MODULE_DIR$/disregard" />
+ 
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/media" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/apct-tests" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/apex" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/cmds" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/data" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/docs" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/drm" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/location" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/lowpan" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/libs" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/tests" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/tools" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/graphics" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/keystore" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/mime" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/mms" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/native" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/nfc-extras" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/obex" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/opengl" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/proto" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/rs" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/samples" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/sax" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/telecomm" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/telephony" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/test-base" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/test-legacy" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/test-mock" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/test-runner" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/startop" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/base/identity" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/ex" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/hardware" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/libs" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/opt" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/rs" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/wilhelm" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/multidex" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/minikin" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/layoutlib" />
+ 
+<excludeFolder url="file://$MODULE_DIR$/frameworks/av" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/compile" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/ml" />
+<excludeFolder url="file://$MODULE_DIR$/frameworks/native" />
+<excludeFolder url="file://$MODULE_DIR$/packages/apps" />
+<excludeFolder url="file://$MODULE_DIR$/packages/inputmethods" />
+<excludeFolder url="file://$MODULE_DIR$/packages/screensavers" />
+<excludeFolder url="file://$MODULE_DIR$/packages/wallpapers" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/BuiltInPrintService" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/Mms" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/Mtp" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/Telecomm" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/Telephony" />
+<excludeFolder url="file://$MODULE_DIR$/packages/services/AlternativeNetworkAccess" />
+```
 
-- ninja failed with: exit status 137 ，构建过程由于内存问题而终止，具体系统日志/var/log/syslog  OOM->kill ninja
+### 3.3 aosp下解压执行驱动->vendor
 
-  ```shell
-  #执行
-  sudo vim build/soong/java/config/config.go    
-  #或     
-  sudo gedit build /soong/ java/config/ config.go
-  #把2048修改为4096关闭当前编译Terminal窗⼝
-  pctx.StaticVariable("JavacHeapSize" , "4096M") 
-  ```
-  
-  ```shell
-  #配置
-  sudo vim ~/.bashrc
-  export MAVEN_OPTS="-Xms8g -Xmx8g"
-  #编译启动后看是否生效 
-  grep "JavacHeapSize" out/soong/build.ninja
-  ```
-  
+#1.当前repo对应的分支信息
+cd .repo/manifests
+git logwq
 
-https://mp.weixin.qq.com/s?__biz=MzA5MzI3NjE2MA==&mid=2650271897&idx=1&sn=47e3e0c45a1c832f9e1af91d9b9c5d87&chksm=886301f6bf1488e0a23e57857352f8c1d771dae9bcef4ceb96600d76310157ffb74998ab542b&scene=27
+#2.下载
+#buildId与tag的对应关系 https://source.android.com/docs/setup/reference/build-numbers?hl=zh-cn
+#TQ3A.230805.001.S1	android-13.0.0_r83
+#驱动下载地址 with buildId--  https://developers.google.com/android/drivers?hl=zh-cn
+
+#3.放到根目录解压
+tar -xvzf qcom-sunfish-tq3a.230805.001.s1-377dd9d9.tgz
+tar -xvzf google_devices-sunfish-tq3a.230805.001.s1-2a7bf157.tgz
+#解压得到2个sh自释放文件
+extract-google_devices-walleye.sh extract-gcom-walleye.sh
+#4.安装
+./extract-google_devices-sunfish.sh
+./extract-qcom-sunfish.sh
+#看完license输入 I ACCEPT 安装完成，此时会创建vendor文件夹
 
 ## 4.刷入设备
 
@@ -270,10 +384,7 @@ oem解锁：https://wiki.lineageos.org/devices/sunfish/install/#unlocking-the-bo
   
   #传输到mac开始刷入
   
-  
   ```
-
-  
 
 
 其他品牌刷机：

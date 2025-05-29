@@ -92,7 +92,6 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
 				//setContentView()=>PhoneWindow.setContentView() =>new DecorView()关联contentView
 }
 
- //========ActivityThread.java======
  final void handleResumeActivity(ActivityClientRecord r...){
        ......
        performResumeActivity(token, clearHide, reason);
@@ -110,7 +109,8 @@ private Activity performLaunchActivity(ActivityClientRecord r, Intent customInte
 		private final ArrayList<WindowManager.LayoutParams> mParams;
     public void addView(View view, ViewGroup.LayoutParams params,
             Display display, Window parentWindow, int userId) {
-			//new ViewRootImpl.setView 管理decor以及之下的view树
+			//new ViewRootImpl.setView 管理decorview(此时decor已经关联了contentView)
+			//主线程创建的ViewRootImpl
 		   ViewRootImpl root =	new ViewRootImpl(view.getContext(), display,
                windowlessSession)
 		   mViews.add(view);
@@ -137,15 +137,30 @@ class ViewRootImpl{
             int userId){
 						//decorview的parent就是ViewRootImpl
             view.assignParent(this);
+						//..
+						requestLayout()
       }
 			
       void requestLayout() {
             if (!mHandlingLayoutInLayoutRequest) {
-                checkThread();//检测ViewRootImpl创建线程和当前绘制线程是否一致，不一致抛异常
+						//检测ViewRootImpl创建线程和当前绘制线程是否一致，不一致抛异常：CalledFromWrongThreadException		
+                checkThread();
                 mLayoutRequested = true;
                   //不是立即执行，只是将任务丢给 Choreographer 
                 scheduleTraversals();
             }
+        }
+
+		    public ViewParent invalidateChildInParent(int[] location, Rect dirty) {
+							//检测ViewRootImpl创建线程和当前绘制线程是否一致，不一致抛异常：CalledFromWrongThreadException
+             checkThread();
+              if (dirty == null) {
+									//最终也会调用scheduleTraversals（）
+                  invalidate();
+                  return null;
+              } else if (dirty.isEmpty() && !mIsAnimating) {
+                  return null;
+              }
         }
 
       void scheduleTraversals(){
@@ -174,7 +189,7 @@ class ViewRootImpl{
         final View host = mView;//decorView
     		if(mFirst){
           	//decorview 分发 AttachInfo到子view，标志view已经被添加到window
-						//view.post的任务这时可以进行handler.post了
+						//view.post的任务mRunQueue此时可以执行了
             host.dispatchAttachedToWindow(mAttachInfo, 0);
 						mAttachInfo.mTreeObserver.dispatchOnWindowAttachedChange(true);
         }
@@ -255,7 +270,7 @@ public final class Choreographer {
     }
 ```
 
-### View.invalidate与requestLayout
+### View.invalidate与requestLayout 与主动触发绘制线程异常
 
 requestLayout方法会导致view measure与layout，而draw不一定被执行
 
@@ -268,34 +283,30 @@ public class View{
               ...
               final ViewParent p = mParent;
               if (p != null && ai != null && l < r && t < b) {
+									//触发绘制点1：递归到ViewRootImpl.invalidateChild =>checkThread
                   p.invalidateChild(this, damage);
               }
             
               ...
       }
+
+		public void requestLayout() {
+                 //触发绘制点2：递归到ViewRootImpl.requestLayout =>checkThread
+ 				if (mParent != null && !mParent.isLayoutRequested()) {
+            mParent.requestLayout();
+        }
+    }
 }
 ```
 
 都是**逐步向上请求**的过程，decorview的viewParent是ViewRootImpl,到这里后checkThread会执行，导致
-`Only the original thread that created a view hierarchy can touch its views.`
+`CalledFromWrongThreadException`
 即只有创建ViewRootImpl 即view树的线程可以修改其中的view 
 
-例外:但是如果在onCreate中进行子线程更新UI,由于ViewRootImpl还没创建，所以不会出问题
+**为何要检查主线程？**
+Android中的**UI 组件（View）不是线程安全的 ,Measure → Layout → Draw是单线程串行执行的。
 
+**例外：**
 
-```java
-public class View{	
-      void invalidateInternal(int l, int t, int r, int b, boolean invalidateCache,
-              boolean fullInvalidate) {// 3
-              ...
-              final ViewParent p = mParent;
-              if (p != null && ai != null && l < r && t < b) {
-                  p.invalidateChild(this, damage);
-              }
-            
-              ...
-      }
-}
-```
-
+- 在onCreate中进行子线程更新UI：由于ViewRootImpl还没创建，绘制任务还没开始，所以不会出问题
 

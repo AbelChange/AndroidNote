@@ -1,8 +1,13 @@
 ## OkHttp源码解读
 
-![拦截器链](./img/拦截器链.webp)
+![okHttp拦截器](img/OkHttp%E7%9A%84%E4%BD%BF%E7%94%A8/%E6%8B%A6%E6%88%AA%E5%99%A8%E9%93%BE.webp)
 
-![okHttp拦截器](./img/okHttp拦截器.webp)
+![okHttp拦截器](img/OkHttp%E7%9A%84%E4%BD%BF%E7%94%A8/okHttp%E6%8B%A6%E6%88%AA%E5%99%A8.webp)
+
+| **特性** | addInterceptor              | addNetworkInterceptor                    |
+| -------- | --------------------------- | ---------------------------------------- |
+| 层级     | 应用层                      | 网络层                                   |
+| 用途     | 添加统一 header、日志、重试 | 网络内容修改、监控下载、响应 header 操作 |
 
 
 
