@@ -73,10 +73,11 @@ i in 0..100 判断i是否在区间[0,100]中
 #### 3. 集合
 
 ```kotlin
-//不可变集合
+//不可变集合 使用 List 接口限制 能避免外部误修改，但是不是保证线程安全
     val school = listOf("mackerel", "trout", "halibut")
 //可变
     val listWithNulls = mutableListOf("tuna", "salmon", null)
+
 //过滤掉集合中的null
     val nonNullList: List<String> = listWithNulls.filterNotNull()
 //简单声明
@@ -97,10 +98,19 @@ mutableList.add(2)
 mutableList.add(2)
 mutableList.add(null)
 mutableList.filterNotNull()
-//foreach 无法打断循环
-mutableList.forEach{
+//foreach 内联函数，任何方式都无法打断循环
+mutableList.forEach {
+    if (it == 3) return@forEach  // 相当于 continue
     println(it)
 }
+
+listOf(1, 2, 3, 4, 5). {
+    if (it == 3) return //退出函数
+    println(it)
+}
+println("Done")
+
+
 //for 可以打断
 for(item in mutableList){
     println(item)
@@ -522,6 +532,9 @@ fun main(args: Array<String>) {
 泛型  out in
 producer extends,consumer super!
 
+> **Kotlin 通过“接口分离 + 泛型协变”在编译期保证安全。*
+> 例如 interface MutableList<E> 和 interface List<out E>
+
 #### 28.伴生对象
 
 ```kotlin
@@ -556,7 +569,8 @@ EditText().addTextChangedListener(object : TextWatcher {
 背景：lambad作为参数，调用者在调用时候会产生匿名对象
 
 //inline 修饰函数,内联优化 
-避免产生匿名对象，将函数铺平，使用 inline + reified可以保留泛型信息
+避免产生匿名对象，将函数铺平，
+泛型场景，使用 inline + reified可以保留泛型信息（Kotlin 编译器的功能）
 
 //noinline修饰参数 是局部指向性的屏蔽该优化
 某个参数取消该效果,可以使用该参数作为对象，传递或返回
@@ -568,5 +582,21 @@ inline的高阶函数，可以返回main,也可以返回lambada
 避免调用提前返回
 ```
 
+#### 31.java相互调用
 
+- **@JvmOverloads**：
 
+  👉 **给 Java 生成多个重载方法**，解决 Kotlin 默认参数在 Java 不可见的问题，常用来编写自定义view
+
+- **@JvmStatic**：会额外生成一个真正的static函数,更简短的调用
+
+  👉 **把 Kotlin 的方法/属性暴露成真正的 static**，让 Java 调用更自然
+
+#### 32.单例
+
+| **Kotlin 单例类型** | **Java 本质**        | **线程安全**         |
+| ------------------- | -------------------- | -------------------- |
+| object              | 饿汉式单例           | 是                   |
+| by lazy（无同步）   | 懒汉式单例           | 否                   |
+| by lazy（同步模式） | 双重检查锁（DCL）    | 是                   |
+| companion object    | 静态内部类饿汉式单例 | 是（JVM 类加载保证） |

@@ -263,6 +263,15 @@ Modifier.composed 在 Jetpack Compose 中的主要用途之一，**就是为 Mod
 
 Modifier.layout（measurable,constraints） 修改尺寸和位置
 
-Modifier.measure()Clickable-CombinedClickable-pointerIntput(Unit)
+Modifier.measure()
+Clickable-CombinedClickable-pointerIntput(Unit)
 
 生效顺序：后发先至   数组 + 链表  存储Node，后来的放表头
+```kotlin
+Modifier.pointInput(Unit){
+	detectTapGesture{onTap = {}.onDoubleTap = {},onLongPoress = {}, onPress = {}}
+}
+```
+
+
+

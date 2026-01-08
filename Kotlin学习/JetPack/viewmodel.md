@@ -110,3 +110,14 @@ Fragment具有属性retainInstance，默认值为false，当设备旋转时，fr
 需要说明的是，只有调用了fragment的setRetainInstance(true)方法，并且因设备配置改变，托管Activity正在被销毁的条件下，fragment才会短暂的处于保留状态。如果activity是因操作系统需要回收内存而被销毁，则所有的fragment也会随之销毁。
 
 setRetainInstance(boolean) 是Fragment中的一个方法。将这个方法设置为true就可以使当前Fragment在Activity重建时存活下来。在setRetainInstance(boolean)为true的 Fragment 中放一个专门用于存储ViewModel的Map, 自然Map中所有的ViewModel都会幸免于Activity重建，让Activity, Fragment都绑定一个这样的Fragment, 将ViewModel存放到这个 Fragment 的 Map 中, ViewModel 组件就这样实现了。
+
+### 进程被杀恢复
+
+SavedState
+
+```kotlin
+class MyViewModel(private val state: SavedStateHandle) : ViewModel() {
+  val name: MutableLiveData<String> = state.getLiveData("name")
+}
+```
+

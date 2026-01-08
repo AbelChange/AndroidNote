@@ -6,7 +6,7 @@ https://github.com/linxu-link/CarServerArch
 
 - 八种基本数据类型：byte、char、short、int、long、float、double、boolean
 - String，CharSequence
-- 实现了Parcelable接口的数据类型
+- 实现了Parcelable接口的对象类型，推荐标明**in/out/inout**，代表数据流向，默认为 **in**
 - List 类型。List承载的数据必须是AIDL支持的类型，或者是其它声明的AIDL对象
 - Map类型。Map承载的数据必须是AIDL支持的类型，或者是其它声明的AIDL对象
 
@@ -42,8 +42,8 @@ Socket  从用户空间拷贝到内核空间，再拷贝到用户空间 涉及�
 
 Binder驱动：
 
-- 传统概念：磁盘-->内核空间-->用户空间
-  使用mmap,用户对内核空间的操作直接映射到磁盘
+- mmap传统概念：磁盘-->内核空间-->用户空间
+  用户对内核空间的操作直接映射到磁盘
 - binder:客户端只需要将数据copy_from_user一次即可
   - Binder不存在物理磁盘，Binder驱动使用mmap是为了在内核空间创建数据接收缓存区，限制单次传输1M
 

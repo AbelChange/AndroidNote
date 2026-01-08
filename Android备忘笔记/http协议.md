@@ -8,7 +8,7 @@
 
 分层管理：应用层，传输层，网络层，链路层，实体层
 
-### 应用层协议有：FTP，文件传输协议，DNS （domain name system）,Http
+### 应用层协议有：FTP，文件传输协议，DNS （domain name system）,Http,SomeIP
 
 DNS负责域名解析，即提供 IP地址与域名之间的转换
 
@@ -144,28 +144,33 @@ server 响应 header:Set-Cookie
 - CR+LF
 - body
 
-#### 2.91header细分
+##### 2.91header
 
-##### 2.91general header 
+ | **Header**    | **含义** | **示例 / 说明**                   |
+   | ------------- | -------- | --------------------------------- |
+   | Cache-Control | 缓存控制 | max-age=3600 / private / no-cache |
+   | Connection    | 连接控制 | keep-alive / close                |
+   | Via           | 代理信息 | Via: 1.1 proxy.example.com        |
 
--  cachcontrol:max-age/private/no-cach(客户端不要缓存）
-- connection：keep-alive
-- via 代理服务器
 
-##### 2.92requst header
 
-- cookie：请求头 expires,服务端只能通过覆盖让其过期
-- accept-charset 
-- host 区分代理服务器中某个主机
-- upgrade:websocket
+**处理内容**
 
-##### 2.93resonse header
+| **请求头 (Accept-\*)** | **含义**                | **示例**                                    | **对应响应头 (Content-\*)**            | **说明**                                                     |
+| ---------------------- | ----------------------- | ------------------------------------------- | -------------------------------------- | ------------------------------------------------------------ |
+| Accept-Charset         | 客户端可接受的字符集    | Accept-Charset: utf-8, iso-8859-1;q=0.5     | Content-Type: text/html; charset=utf-8 | 服务器返回的内容字符集，通常在 Content-Type 的 charset 参数中指定。 |
+| Accept-Encoding        | 客户端可接受的压缩方式  | Accept-Encoding: gzip, deflate              | Content-Encoding: gzip                 | 服务器实际传输的压缩方式，客户端需要支持对应算法才能解压。   |
+| Accept-Language        | 客户端可接受的语言/地区 | Accept-Language: en-US,en;q=0.9,zh-CN;q=0.8 | Content-Language: zh-CN                | 服务器返回实际语言版本，客户端可根据该头显示内容或进行多语言处理。 |
 
-Connection:KeepAlive/False
 
-Content-Type:multipart/form-data 
 
-Content-Range:bytes =1000-2000,5001-10000 
+**处理缓存**
+
+1. **强制缓存** → Cache-Control: max-age / Expires,有效期内无需向服务器请求
+2. **协商缓存** ，需要向服务端确认
+   - ETag /If-None-Match  版本维度
+   -  Last-Modified / If-Modified-Since 时间维度
+
 
 ### 3HTTP状态码：
 
@@ -240,7 +245,46 @@ root设备可以替换系统证书，只在高版本有效，低版本还是可�
 
 #### 密钥动态下发：
 
-sm2/sm4 加密，非对称加密获取密钥，对称加密对内容加密
+sm2/sm4 加密，非对称加密获取对称加密的密钥
+
+```sequence
+    participant Client
+    participant Server
+
+    Note over Client: 1️⃣ 客户端生成随机 SM4 Key
+    Client->>Client: sm4Key = random(128bit)
+
+    Note over Client: 2️⃣ 用 SM4 加密业务数据
+    Client->>Client: cipherData = SM4_Encrypt(sm4Key, plainData)
+
+    Note over Client: 3️⃣ 用服务端 SM2 公钥加密 SM4 Key
+    Client->>Client: encryptedSm4Key = SM2_Encrypt(serverPublicKey, sm4Key)
+
+    Note over Client: 4️⃣ 可选: 用客户端私钥签名
+    Client->>Client: signature = SM2_Sign(clientPrivateKey, SM3(plainData))
+
+    Note over Client,Server: 5️⃣ 发送 HTTP 请求
+    Client->>Server: { key: encryptedSm4Key, data: cipherData, sign: signature }
+
+    Note over Server: 6️⃣ 服务端用 SM2 私钥解密 SM4 Key
+    Server->>Server: sm4Key = SM2_Decrypt(serverPrivateKey, encryptedSm4Key)
+
+    Note over Server: 7️⃣ 用 SM4 Key 解密业务数据
+    Server->>Server: plainData = SM4_Decrypt(sm4Key, cipherData)
+
+    Note over Server: 8️⃣ 可选: 验证签名
+    Server->>Server: valid = SM2_Verify(clientPublicKey, SM3(plainData), signature)
+
+    Note over Server: 9️⃣ 处理业务逻辑，生成响应
+    Server->>Server: responseData = process(plainData)
+
+    Note over Server,Client: 10️⃣ 可选: 用 SM4/SM2 加密响应返回
+    Server->>Client: { key: encryptedSm4Key_resp, data: cipherData_resp }
+```
+
+
+
+
 
 
 #### http瓶颈

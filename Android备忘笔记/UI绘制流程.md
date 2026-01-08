@@ -167,8 +167,14 @@ class ViewRootImpl{
           //发送同步屏障,屏蔽默认handler发送的同步消息
          mHandler.getLooper().getQueue().postSyncBarrier();
    		//Posts a callback to run on the next frame（当vsync信号来之后执行）
-			//该消息是异步的，优先于同步消息执行
-      //卡顿原因1.此时如果有其他耗时消息在分发 就可能回掉帧
+			//该消息是异步的，在一个vsync周期优先于同步消息执行，
+      //卡顿原因1.此时如果有其他耗时消息在分发 就可能会掉帧
+
+		//这里异步消息类型有 
+        //input
+        //animation
+        //travesal,
+			//commit 当前frame已经提交给gpu	
       mChoreographer.postCallback(
                           Choreographer.CALLBACK_TRAVERSAL, mTraversalRunnable, null);
       }
@@ -246,6 +252,24 @@ public final class Choreographer {
      } 
 }
 ```
+
+### **渲染时序图**
+
+```xml
+VSYNC 信号
+    ↓
+Input处理（CALLBACK_INPUT）
+    ↓
+Animation更新（CALLBACK_ANIMATION）
+    ↓
+Traversal（measure/layout/draw）完成（CALLBACK_TRAVERSAL）
+    ↓
+提交到 GPU / Surface（CALLBACK_COMMIT） ← 你关注的阶段
+    ↓
+屏幕显示
+```
+
+
 
 ### 获取view宽高
 

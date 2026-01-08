@@ -6,8 +6,8 @@
 
 #### 为什么使用泛型？
 
-- 扩展性（求和 int,float,double）
-- 类型安全（list）
+- 扩展性（求和 int,float,double），代码复用
+- 类型安全（list） 编译期检查，让通用代码不再不安全
 
 #### 泛型可以修饰 类 接口 方法
 
@@ -35,6 +35,10 @@ class Test<K，T extends Comparable>{
 
 #### 泛型通配符   ?extends   |    ? super 
 
+作用：保证类型安全的前提下，允许父子类型在泛型中协作
+
+会有读写限制pecs
+
 ```java
 //pecs 
 //producer extends(out)- 上界，只安全读 kotlin中的List
@@ -48,6 +52,10 @@ public void test(GenericType<? extends Fruit> type){
 }
 
 ```
+
+
+
+
 
 ### 2.注解
 
